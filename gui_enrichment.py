@@ -887,6 +887,7 @@ class XYSelectorTopLevel():
         x = self.x.get()
         y = self.y.get()
         data = self.data
+        create_bunit_frac(data)
         EnrichmentToplevel(data, x, y)
 
     def __init__(self, data):
