@@ -252,6 +252,7 @@ class MuseFCSCreator():
         log = [str(x) for x in buf.read(endlog).splitlines()]
         together_dic["#LOG OF EVENTS"] = log
         self.meta_information = together_dic
+        self.meta=self.text
         return()
 
     def unify_channel_names(self):
