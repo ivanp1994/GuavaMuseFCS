@@ -14,7 +14,7 @@ museInterface.py    - pylint global evaluation = 10/10
 supplemental.py     - pylint global evaluation = 9.94/10
 """
 
-from .musefcsparser import parse, text_explanation
+from .musefcsparser import parse, text_explanation, MuseFCSCreator
 from .supplemental import select_file
 from .museInterface import start_interface
 from .dfdrawer import DrawTopLevel
