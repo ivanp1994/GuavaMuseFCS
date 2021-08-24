@@ -1,182 +1,117 @@
-# GuavaMuseFCS parsing/ pandasDataFrame GUI plotter
-Parsing data from [GuavaMuse cytometer](https://www.luminexcorp.com/muse-cell-analyzer/)'s exported .FCS file and drawing said data or any other pandas DataFrame structure 
+# GuavaMuseFCS-Enrichment branch
 
-## Simplest parsing
-Simplest parsing involves Python (numpy and pandas package needed):
-```
-from . import parse
-meta,data=parse(path)
-```
-**Meta** is a dictionary structure containing all meta-information (samples, data, user, etc.) while **data** is pandas DataFrame with actual measurements.
-Columns of **data** are all parameters that GuavaMuse cytometer records, with an added column "Sample" and "Name".
+Enrichment branch is functionally the same as main branch, but there are additional features implemented in the form of quantifying both number and enrichment percentage of cells after some operation.
+Enrichment branch is relatively rigid (as opposed to main branch) in what it can take as input. This rigidity manifests itself in naming scheme of recorded samples.
 
-Total columns of **data** are:
-- Name
-- Sample
-- FSC-HLin
-- FSC-HLog
-- YEL-HLin
-- YEL-HLog
-- RED-HLin
-- RED-HLog
-- TIME
-- FSC-W
-- RED-W
-- YEL-W
+The purpose of the enrichment branch is to quantify and visualize percentage of cells positive for certain condition and enrichment of those cells after a certain operation.
+Enrichment branch makes use of **"Biounit"** - which is a unit defined by some biological criteria (e.g. a mouse or cell type), and **"Fraction"** which is one part of "marking and enriching" operation.
 
-Name is the name of the .FCS file, Sample contains all datasets recorded. FSC corresponds to cell size, YEL corresponds to yellow flourescence (for example, flourescence of phycoerythrin), RED corresponds to red flourescence (for example, flourescence of propidium iodide).
-HLog is [hyperlog](https://pubmed.ncbi.nlm.nih.gov/15700280/) transformation of HLin version. W is supposed to be parameter for Width (encoding the duration of the signal, as opposed to height of the signal) enabling doublet detection.
+Procedure goes roughly like this:
 
-Normally, the channel name depends on the module used. For example, Cell Cycle module (extension .CCY.FCS) will explicitly call "RED-HLin" DNA Content, while a Ki67 module (extension .Ki67.FCS) will explicitly call "YEL-HLog" Ki67 positive. The channel names are unified so that different modules still have the same channel names.
+- Uniform cell suspension containing various different cells is achieved - "INP" fraction
+- Certain cells within are marked in a way that GuavaMuse can detect - "PM" fraction
+- Certain procedure is done on marked cell suspension that results in the increase of the proportion of those marked cells - "S" fraction
+- (Optional) Certain procedure is done on marked cell suspension that results in the decrease of the proportion of those marked cells - "M" fraction
 
-If navigating to the path is difficult, a tkinter GUI interface is provided in the form of select_file function
-```
-from . import parse
-from . import select_file
-path=select_file()
-meta,data=parse(path)
-```
-The select_file function will open an OpenFile prompt which is then parsed using parse function
+Each of those 4 stages is a different fraction of the same biounit. Allowed fraction names are "INP", "PM", "S", and "M".
 
-## Option for legendization
+# Example on MACS for mouse spermatogonia
 
-Additional feature is added in the form of **text_explanation** function. GuavaMuse, by default, encodes each measurement in the format of "Sample-XXX" where XXX a number (e.g. Sample-001). Since using touchscreen/mouse+touchscreen on cytometer is rather unwieldy, said formatting persists in the .FCS file. However **text_explanation** function takes a path to .FCS file, and takes a path to .TXT file of the same name, and replaces Sample-XXX with user inputted name. 
+Example given here is an uniform suspension of testicular cells of a mouse. Each mouse is considered one separate biounit. 
+Uniform suspension of testicular cells consists of many different cell types - including spermatogonia, spermatides, Leydig cells, spermatozoa, etc.
+Spermatogonia express c-kit receptor, and they are subsequently marked with phycoerythryn (PE) marked antibody (PE-antibody). Magnetic nanobeads that recognize PE are then added to the mixture, and suspension is subjected to
+[magnetically activated cell sorting](https://en.wikipedia.org/wiki/Magnetic-activated_cell_sorting) that results in fraction enriched for spermatogonia, and fraction depleted of spermatogonia.
 
-The .TXT file must the number of lines equal to the number of samples recorded in .FCS file and in the same folder as the .FCS file.
+The procedure results in four fractions per mouse. Additionally, PE can be detected through GuavaMuse through YEL parameter. The problem is that all cells demonstrate some level of yellow flourescence in
+a phenomenon called "[autoflourescence](https://en.wikipedia.org/wiki/Autofluorescence)". To differentiate spermatogonia from autoflorescent cells, PE-unmarked fraction ("INP") must be recorded to calibrate GuavaMuse sample collecting.
+PE-marked fraction ("PM") will then be recorded and if marking is successful - there will be a population of cells to the right of YEL-HLog parameter corresponding to PE-marked spermatogonia. Next, spermatogonia are magnetically separated into a fraction enriched for spermatogonia ("S)
+and fraction depleted of spermatogonia ("M"). Example histogram is given below:
 
-Text file example:
+![mouse example](https://user-images.githubusercontent.com/84333373/118981191-606f7d00-b97a-11eb-91cd-78b5faac00ed.png)
 
-![text file example](https://user-images.githubusercontent.com/84333373/118640838-b8bb4900-b7d9-11eb-9ee2-4736fd6d1dcb.PNG)
-
-Data before and after **text_explanation** :
-
-![databefore_dataafter](https://user-images.githubusercontent.com/84333373/118641363-5a429a80-b7da-11eb-92bd-d2b6d121badd.PNG)
+Histogram for biounit (mouse) "C_1" and various fractions. Fractions are sorted from least amount of PE-positive cells to most amount of PE-positive cells ("INP","M","PM","S").
 
 
-In the above example, text file has 12 lines, each corresponding to each of 12 samples in the corresponding .FCS file. Since repeated measurements of the same sample is desired, example .FCS file consists of 3 replicate measurements of 4 samples (total 12). 
 
-**Text_explanation** function also inserts one new column titled **Replicate** that corresponds to repeated measurement of sample sample. 
-
-## Advanced parsing with tkinter GUI
-
-Additional features are provided in the form of a Graphic User Interface.  [pandasTable package](https://pandastable.readthedocs.io/en/latest/pandastable.html) is needed.
-
-GUI is started by
+Enrichment branch is initialized the same as main branch through:
 
 ```
-from . import start_interface
+from museInterface import start_interface
 start_interface()
 ```
-
-**start_interface()** starts a [tkinter .mainloop](https://www.educba.com/tkinter-mainloop/) that doesn't end until user ends the window.
-
-Interface looks like this:
+This results in standard interface, same as one in main:
 
 ![initial](https://user-images.githubusercontent.com/84333373/118638099-c7543100-b7d6-11eb-940b-327e2655334b.PNG)
 
-- **Add** file opens a prompt for adding a .FCS file. 
+After adding one or more files, in order for the next part to work, user must legendize samples to a compliant form. 
 
-- **Merge** file merges all files into one file (necessary to enter Draw Menu)
+Compliant form of samples must be of the form "Fraction"-"Biounit". Example is given here:
 
-- **D R A W** enters the Draw Menu (more on that later)
+![text file example](https://user-images.githubusercontent.com/84333373/118640838-b8bb4900-b7d9-11eb-9ee2-4736fd6d1dcb.PNG)
 
-After a couple of files are added, interface looks like this:
+After legendization and merging datafiles, the interface looks like this:
 
-![added files](https://user-images.githubusercontent.com/84333373/118638856-8dcff580-b7d7-11eb-8690-8ea19a3908e1.PNG)
+![initial](https://user-images.githubusercontent.com/84333373/121691256-17b56a80-cac7-11eb-8516-5a9b7db698a6.PNG)
 
-- **Automatic Legend** - legendizes the dataset according to **text_explanation** function
-- **Manual Legend** - prompts manual legendization
-- **Export Data** - exports the data to .CSV or .XSLX file
-- **Remove Data** - deletes the data set
+The difference is in the option for Enrichment.
 
-Manual legendization : 
 
-![manualleg](https://user-images.githubusercontent.com/84333373/118641782-ddfc8700-b7da-11eb-9b99-f0bd80f839d8.PNG)
+# Enrichment
 
-Once either all samples or none samples are legendized, press **"Merge Files"** and **"D R A W"** to enter DrawFrame
+Clicking Enrichment opens a new window
 
-# Gating and Drawing
+![xyselector](https://user-images.githubusercontent.com/84333373/121691343-3156b200-cac7-11eb-9054-79d99cec177a.PNG)
 
-After pressing **Merge Files** the interface looks like this:
+- X Value
+This is a name of numeric column on which enrichment procedure is measured. In our example of mouse spermatogonia, X Value would be YEL-HLog
 
-![gating](https://user-images.githubusercontent.com/84333373/123617428-84d73880-d807-11eb-9641-5bd8640efaf3.PNG)
+- Y Value
+This is a name of numeric column that will be the Y axis of the scatterplot
 
-Pressing **D R A W** enters Draw Menu (#Drawing Dataframe section), and pressing **Gating** enables gating (#Gating section)
+Clicking Load opens a new window
 
-# Gating
+![ned_menu](https://user-images.githubusercontent.com/84333373/121691524-6105ba00-cac7-11eb-8eb4-a5bb0d0d7d7d.PNG)
 
-Pressing Gating first prompts the Menu in which the user can select data upon which Gating procedure will be performed. The *"Select Data for Gating"* looks like this:
+The upper row contains biounits. The row below contains fractions.
+Clicking on the buttons switches from biounit to biounit, or from fraction to fraction, changing the display of the scatterplot and histogram plot.
 
-![gating_adding](https://user-images.githubusercontent.com/84333373/123617699-cf58b500-d807-11eb-8bf9-5d6e4ab88f4e.PNG)
+## Display
 
-Pressing **Add to Selected** adds the row to selected data. Pressing **Switch View** switches between all available data and selected data. Pressing **Remove from Selected** removes the selected row from selected data. Finally, pressing **Finalize** enters the next phase of gating - creating a scatterplot. The "Select Data for Gating" menu persists, so multiple gating sessions can be done. First a prompt is created in which the user can select X and Y variables:
+Two plots are displayed, right below rows containing fractions. One is scatterplot, and the other is histogram plot. 
+On both plots are two red lines, intersecting at a set X value. This X value will be called **threshold**. Clicking on the buttons below the plots changes the position of the two red lines and the threshold. 
+The current X value of red lines is displayed in the middle of the buttons. It's also possible to change the coordinate, and the threshold value, by typing in a valid value (integer or float, both x.x and x,x format are accepted). Clicking on the graph also sets the red line where you clicked.
 
-![gating_crsc](https://user-images.githubusercontent.com/84333373/123618330-6160bd80-d808-11eb-8b2c-9f27ac442b6e.PNG)
- 
-Pressing **Load** enters the next phase of gating - gating upon the scatterplot. Which looks like this:
+Changing the position of the red lines changes the textbox in the upper right corner of the graphs. Textbox displays what percentage of the data is to the left and to the right of the red lines at any given time. 
 
-![gating_gate1](https://user-images.githubusercontent.com/84333373/123618673-b6043880-d808-11eb-9226-7aeac9627cea.PNG)
+To the right of graphs is a table detailing threshold of all biounits. After all thresholds are set adequately, the display looks like this.
 
-Pressing **Initiate Gate** enables the user to click on the scatterplot and create a series of points. Those points will then form vertices of a polygon which will act as a gate. Complete the polygon to create one gate. Below is an example of one gate.
+![ned_menu_after](https://user-images.githubusercontent.com/84333373/121692871-d32ace80-cac8-11eb-9f3f-10d0ace6bed4.PNG)
 
-![gating_gate2](https://user-images.githubusercontent.com/84333373/123619042-109d9480-d809-11eb-8921-94327023dca3.PNG)
+Clicking "Load" enables calculation of number, enrichment, and depletion.
 
-Pressing **Complete Gates** finalizes the gating procedure. In the example below, we created one more gate and pressed Complete Gates.
+## Enrichment calculation
 
-![gating_gate3](https://user-images.githubusercontent.com/84333373/123619390-6a9e5a00-d809-11eb-84a5-15a9670ceaa8.PNG)
+What will be calculated next is the percentage of *X Values* **above** the threshold in other fractions.
 
-Scatterplot is now changed to include Gates (colored and transparent polygones) on the scatterplot, and gates summaries below the the buttons. Gate summary includes a name of a gate (can be changed by clicking and retyping), color of the gate, and statistics such as what percentage of data are within the gate and outside the gate. In the example provided, Gate No.2 is orange colored, and 13.853% of all data are within this Gate. Pressing Remove, deletes the gate from the scatterplot and the gate summary.
+- **%Number** will be equal to the percentage of "PM" fraction that is above the threshold
+- **Enrichment** is calculated as a ratio of percentage of "S" fraction above the calculated percentile value, and percentage of "PM" fraction above that same value
+- **Depletion** is calculated as a ratio of percentage of "PM" fraction above the calculated percentile value, and percentage of "M" fraction above that same value
 
-Finally, pressing **Apply Gates to Data** exports the data in the form of .CSV or .XLSX file. Data also contains columns named for Gates with values True/False if the datapoint is found in the gate or not. 
+Standard deviation for the latter two is calculated through [*propagation of error/uncertainty*](https://en.wikipedia.org/wiki/Propagation_of_uncertainty#Resistance_measurement)
 
-# Drawing Dataframe
+There are two main options to calculate means and standard deviations.
 
-Draw Menu looks like this:
+### Replicate
 
-![drawframe](https://user-images.githubusercontent.com/84333373/119473955-f8d77a00-bd4b-11eb-97f5-569f6372026f.PNG)
+If technical replicates of biounits and fraction were taken - one biounit/fraction measured multiple times on Guava Muse cytometer, clicking on Replicate, and then Calculate gives the following graph:
 
-- **Select Data** button prompts selecting what parts of dataframe will be drawn (default is all)
-- **Draw** draws the graph
-- **Style** changes the [matplotlib stylesheets](https://matplotlib.org/stable/gallery/style_sheets/style_sheets_reference.html)
+![ned_menu_repllicate](https://user-images.githubusercontent.com/84333373/121696637-8cd76e80-cacc-11eb-9da5-43dcad4bc3f0.PNG)
 
-The Type and Kind settings dictate what kind of plot will be drawn, the full list is here:
+There is a tabular representation of results to the right, and graphical representation of tabular results below. 
 
-- Distribution
-  - hist - [Histogram plot](https://seaborn.pydata.org/generated/seaborn.histplot.html)
-  - ecdf - [Empirical Cumulative Distribution Function plot](https://seaborn.pydata.org/generated/seaborn.ecdfplot.html#seaborn.ecdfplot)
-  - kde - [Kernel Density Estimate/Density plot](https://seaborn.pydata.org/generated/seaborn.kdeplot.html#seaborn.kdeplot)
-- Relationship
-  - scatter - [Scatter plot](https://seaborn.pydata.org/generated/seaborn.scatterplot.html?highlight=scatter%20plot#seaborn.scatterplot)
-  - line - [Line plot](https://seaborn.pydata.org/generated/seaborn.lineplot.html#seaborn.lineplot)
-- Categorical
-  - strip - [Strip plot](https://seaborn.pydata.org/generated/seaborn.stripplot.html?highlight=stripplot)
-  - swarm - [Swarm plot](https://seaborn.pydata.org/generated/seaborn.swarmplot.html?highlight=swarm#seaborn.swarmplot)
-  - box - [Box plot](https://seaborn.pydata.org/generated/seaborn.boxplot.html?highlight=box#seaborn.boxplot)
-  - boxen - [Boxen plot](https://seaborn.pydata.org/generated/seaborn.boxenplot.html?highlight=box#seaborn.boxenplot)
-  - violin - [Violin plot](https://seaborn.pydata.org/generated/seaborn.violinplot.html?highlight=violin#seaborn.violinplot)
-  - point - [Point plot](https://seaborn.pydata.org/generated/seaborn.pointplot.html?highlight=point#seaborn.pointplot)
-  - bar - [Bar plot](https://seaborn.pydata.org/generated/seaborn.barplot.html?highlight=barplot#seaborn.barplot)
+### Bootstrap
 
-Variables X and Y dictate what will be drawn on X and Y axis.
+Bootstrap option works by pooling all technical replicates (or not, if there are no technical replicate), then "resampling" from that pool a number of times. 
+For example, if the pool were (1,2,5,6,7), and sampling 3 values from that pool 2 times would yield (1,2,5) or (2,5,7). The number of times a "resample" will happen is dicated by **Iterations** and it can only be a positive integer. The size or a "resampled" sample is dictated by **Sample Size%** and it can be any number between 1 and 100. Be warned, for extreme values, e.g. 10000 iterations, the procedure will take some time. The result will be given same as for the *Replicate* option. 
 
-Additional settings are placed to the right variables, and I recommend going to above links to see what setting does what. For example, for Distribution plot of Histogram kind, bins defines how bins are created - seaborn offers options "fd","doane","sturges" etc. See seaborn's documentation for this.
-
-# Using Draw Menu GUI to draw other dataframes
-
-dfdrawer can be used to draw other datasets. For example:
-
-```
-import seaborn as sns
-data=sns.load_datasets("fmri")
-```
-
-Seaborn module comes with various sample datasets, in the above example, we loaded "fmri" dataset
-
-To call dataframe drawer without anything else use:
-
-```
-from . import DrawTopLevel
-v=DrawTopLevel(master=None,dataframe=data)
-v.myself.mainloop()
-```
-DrawTopLevel is a class that is called with two variables, master and dataframe. Master denotes tkinter Toplevel (tk.Toplevel()) or root (tk.Tk()), so DrawTopLevel can be plugged in any tkinter style interface. If master is called with None, then DrawTopLevel stands alone. .myself is the attribute of DrawTopLevel denoting tkinter root or Toplevel (depending on master) object, and if master is none, .myself needs to be started with .mainloop() method. 
+![ned_menu_bootstrap](https://user-images.githubusercontent.com/84333373/121697838-be046e80-cacd-11eb-9739-4a518a9314bb.PNG)
