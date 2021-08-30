@@ -12,7 +12,7 @@ from .musefcsparser import parse, text_explanation
 from .gating import GUIgating_outline as guigo
 from .gui_enrichment import XYSelectorTopLevel
 from .supplemental import ManualEntry
-
+from .debris_exclusion import DebrisDataManager
 
 class DSS():
     """
@@ -163,6 +163,8 @@ class MDSS():
         self.frame = frame
         self.info = names
         self.data = merged_data
+        self.debrisfree_data = None
+        self.debris_top = None
         frame.grid(row=1, column=0)
         # creates a button that promts exportation of data
         export_but = tk.Button(master=frame, text="Export",
@@ -180,10 +182,22 @@ class MDSS():
         enrichment_but = tk.Button(
             master=frame, text="ENRICHMENT", command=lambda: XYSelectorTopLevel(self.data))
         enrichment_but.grid(row=0, column=6)
-
+        
+        debrisexc_but=tk.Button(master=frame, text="Remove Debris",command=self.debris_removal)
+        debrisexc_but.grid(row=0,column=7)
         # stores this frame in mainclass.frames list for better removal
         mainclass.frames.append(self)
-
+    
+    def debris_removal(self):
+        self.debris_top=DebrisDataManager(self.data)
+        self.debris_top.master.protocol("WM_DELETE_WINDOW",self.debris_removal_end)
+        
+    def debris_removal_end(self):
+        print("Debris removal ended")
+        print(len(self.data))
+        self.data=self.debris_top.selected_data
+        print(len(self.data))
+        self.debris_top.master.destroy
     def export_data(self):
         """
         Exports the dataframe to a given directory

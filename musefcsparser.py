@@ -12,6 +12,42 @@ import numpy as np
 pd.options.mode.chained_assignment = None
 
 
+def extract_cell_number(path):
+    """
+    Extracts the number of cells in a sample from .CSV file
+
+    Returns it as a Dictionary
+    """
+
+    #Check for extension
+    if path[-4:]!=".CSV":
+        _csvpath=path[:-4]+".CSV"
+    else:
+        _csvpath=path
+    #Read the lines
+    _buf=open(_csvpath)
+    lines=_buf.readlines()
+    _buf.close()
+    #Remove excess
+    while "," not in lines[0]:
+        lines.pop(0)
+    lines.pop(0)
+    hcols=lines[0].split(",")
+    lines.pop(0)
+
+    #Extract as DataFrame
+    df=pd.DataFrame([line.split(", ") for line in lines],columns=hcols)
+    df.columns = map(str.strip, df.columns)
+    df=df[["Sample ID","Cells/µL"]]
+    df.columns=["Sample","Cells"]
+    df.Cells=df.Cells.astype(float)
+
+    #Parse as dictionary
+    dic=pd.Series(df.Cells.values,index=df.Sample).to_dict()
+    return(dic)
+
+
+
 class MuseFCSCreator():
     """
     Documentation
@@ -218,8 +254,9 @@ class MuseFCSCreator():
             segment_frame.insert(0, "Sample", relevant["GTI$SAMPLEID"][i])
             segment_storage.append(segment_frame)
         data = pd.concat(segment_storage)
-        ####DODATI RESET INDEX#####
+        
         self.data = data
+        self.data.reset_index(inplace=True,drop=True)
         self.samples = list(relevant["GTI$SAMPLEID"])
 
     def fix_metadata(self, buf):
@@ -310,8 +347,12 @@ class MuseFCSCreator():
         self.read_data(buf)
         self.fix_metadata(buf)
         buf.close()
+        
         self.unify_channel_names()
         self.name_dataset_from_path(path)
+        #Adds another column - number of cells per microliter 
+        dic=extract_cell_number(path)
+        self.data["Cell Number"]=self.data["Sample"].map(dic)
 
 # END
 
