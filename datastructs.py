@@ -194,10 +194,10 @@ class MDSS():
         
     def debris_removal_end(self):
         print("Debris removal ended")
-        print(len(self.data))
+        
         self.data=self.debris_top.selected_data
-        print(len(self.data))
-        self.debris_top.master.destroy
+        
+        self.debris_top.master.destroy()
     def export_data(self):
         """
         Exports the dataframe to a given directory

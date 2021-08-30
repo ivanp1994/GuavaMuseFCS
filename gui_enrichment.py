@@ -210,7 +210,7 @@ class Fraction_Frames():
             data = df.loc[df["Fraction"] == fraction]
             series = data[self.x]
 
-            left = np.count_nonzero(series > self.t)/len(series)*100
+            left = np.count_nonzero(series < self.t)/len(series)*100
             left = round(left, 2)
 
             right = 100-left
@@ -238,7 +238,7 @@ class Fraction_Frames():
             data = df.loc[df["Fraction"] == fraction]
             series = data[self.x]
 
-            left = np.count_nonzero(series > self.t)/len(series)*100
+            left = np.count_nonzero(series < self.t)/len(series)*100
             left = round(left, 2)
 
             right = 100-left
@@ -317,7 +317,9 @@ class Fraction_Frames():
         self.fraction_var.trace("w", self.show_fraction)
 
         i = 0
-        for item in dictionary_figures.keys():
+        fraccs=list(dictionary_figures.keys())
+        fraccs.sort()
+        for item in fraccs:
             bt = tk.Radiobutton(master=frame, indicatoron=0, width=5,
                                 value=item, text=item, variable=self.fraction_var)
             bt.grid(row=0, column=i, sticky="nw")
@@ -406,12 +408,14 @@ class Biounit_Frames():
                 canvas.draw()
         self.explframe = BTFrame(self.master, self.biounit_fractionfr)
         self.explframe.place(2, 1)
+        self.toplevelmaster.add_load_btbutton()
 
-    def __init__(self, master, data, x="YEL-HLog", y="FSC-HLog"):
+    def __init__(self,  master, enrichmenttoplevel, data, x="YEL-HLog", y="FSC-HLog"):
         """
         Initializes the frame
         """
         self.master = master
+        self.toplevelmaster=enrichmenttoplevel
         plt.style.use("ggplot")
         # blue blue red
         matplotlib.rcParams['axes.prop_cycle'] = matplotlib.cycler(
@@ -831,7 +835,18 @@ class EnrichmentToplevel():
             barplot_ned(result), master=self.graphframe)
         bcanvas.draw()
         bcanvas.get_tk_widget().grid(row=0, column=0)
+    def add_load_btbutton(self):
+        
+        bfe_part=self.bfe
+        exp = bfe_part.explframe
+        pos = exp.finalpos  # <-FINAL ROW POSITION OF TKINTER STUCT
+        expframe = exp.btframe  # <-TKINTER STRUCT
 
+        load_bt = tk.Button(master=expframe, bg="gainsboro",
+                            text="LOAD", command=self.load_btdata)
+        load_bt.grid(row=pos, column=0, columnspan=2, sticky="nsew")
+        
+    
     def __init__(self, df, x="YEL-HLog", y="FSC-HLog"):
         """Calls the TopLevel"""
         master = tk.Toplevel()
@@ -840,7 +855,7 @@ class EnrichmentToplevel():
         self.x = x
         self.master = master
         self.bt_dic = None  # Will later have biounit:threshold dictionary
-        bfe_part = Biounit_Frames(self.master, df, x, y)  # <-BIOUNIT FRAME
+        bfe_part = Biounit_Frames(self.master, self, df, x, y)  # <-BIOUNIT FRAME
         self.bfe = bfe_part  # <-HAS BIOUNIT, FRACTION, EXPLANATION frame
         exp = bfe_part.explframe
         pos = exp.finalpos  # <-FINAL ROW POSITION OF TKINTER STUCT

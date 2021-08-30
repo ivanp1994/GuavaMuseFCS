@@ -273,6 +273,7 @@ class InputSelector():
         self.data = data
         # self.master.geometry("100x300")
         samples = list(dict.fromkeys(data.Replicate))
+        samples.sort()
         self.listbox = tk.Listbox(selectmode="multiple", master=self.master)
         for i in range(len(samples)):
             self.listbox.insert(i, samples[i])
