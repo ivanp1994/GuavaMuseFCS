@@ -210,7 +210,7 @@ class Fraction_Frames():
             data = df.loc[df["Fraction"] == fraction]
             series = data[self.x]
 
-            left = np.count_nonzero(series > self.t)/len(series)*100
+            left = np.count_nonzero(series < self.t)/len(series)*100
             left = round(left, 2)
 
             right = 100-left
@@ -238,7 +238,7 @@ class Fraction_Frames():
             data = df.loc[df["Fraction"] == fraction]
             series = data[self.x]
 
-            left = np.count_nonzero(series > self.t)/len(series)*100
+            left = np.count_nonzero(series < self.t)/len(series)*100
             left = round(left, 2)
 
             right = 100-left
@@ -317,7 +317,9 @@ class Fraction_Frames():
         self.fraction_var.trace("w", self.show_fraction)
 
         i = 0
-        for item in dictionary_figures.keys():
+        fraccs=list(dictionary_figures.keys())
+        fraccs.sort()
+        for item in fraccs:
             bt = tk.Radiobutton(master=frame, indicatoron=0, width=5,
                                 value=item, text=item, variable=self.fraction_var)
             bt.grid(row=0, column=i, sticky="nw")
