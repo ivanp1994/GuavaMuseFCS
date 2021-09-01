@@ -23,7 +23,9 @@ from sklearn.utils import resample
 from pandastable import Table
 from .supplemental import get_numerical, ModifiedOptionMenu
 
-#%%FUNCTIONS
+# %%FUNCTIONS
+
+
 def create_bunit_frac(df):
     """
 
@@ -50,10 +52,11 @@ def create_bunit_frac(df):
     df.reset_index(inplace=True, drop=True)
     return()
 
-def replicate_measurement(data,x,bt_dictionary) -> dict:
+
+def replicate_measurement(data, x, bt_dictionary) -> dict:
     """
     Measures from replicates of a fraction of a given biounit
-    
+
     Parameters
     ----------
     data : dataframe with biounit and fraction columns.
@@ -68,35 +71,36 @@ def replicate_measurement(data,x,bt_dictionary) -> dict:
                      Fraction_2 : percentage_above_threshold_in_fraction_2},
         BIOUNIT_2:  {Fraction_1 : percentage_above_threshold_in_fraction_1,
                      Fraction_2 : percentage_above_threshold_in_fraction_2},
-        } 
-                 
+        }
+
     """
-    biounits=list(bt_dictionary.keys())
-    fractions=list(set(data.Fraction))
-    biounit_fraction={}
+    biounits = list(bt_dictionary.keys())
+    fractions = list(set(data.Fraction))
+    biounit_fraction = {}
     for biounit in biounits:
-        threshold=bt_dictionary[biounit]
-        subset_bunit=data.loc[data.Biounit==biounit]
-        fraction_measurement={}
+        threshold = bt_dictionary[biounit]
+        subset_bunit = data.loc[data.Biounit == biounit]
+        fraction_measurement = {}
         for fraction in fractions:
-            subset_fraction=subset_bunit.loc[subset_bunit.Fraction==fraction]
-            replicates=list(set(subset_fraction.Replicate))
-            measurements=[]
+            subset_fraction = subset_bunit.loc[subset_bunit.Fraction == fraction]
+            replicates = list(set(subset_fraction.Replicate))
+            measurements = []
             for replicate in replicates:
-                subset_replicate=subset_fraction.loc[subset_fraction.Replicate==replicate]
-                series=subset_replicate[x]
+                subset_replicate = subset_fraction.loc[subset_fraction.Replicate == replicate]
+                series = subset_replicate[x]
                 above = np.count_nonzero(series > threshold)
                 percentage = above/len(series)*100
                 measurements.append(percentage)
-                #print(f"{biounit=},{threshold=},{fraction=},{replicate=},{percentage=}")
-            fraction_measurement[fraction]=measurements
-        biounit_fraction[biounit]=fraction_measurement
+                # print(f"{biounit=},{threshold=},{fraction=},{replicate=},{percentage=}")
+            fraction_measurement[fraction] = measurements
+        biounit_fraction[biounit] = fraction_measurement
     return(biounit_fraction)
 
-def bootstrap_measurement(data,x,bt_dictionary,n_iters=50,per_sample=0.40):
+
+def bootstrap_measurement(data, x, bt_dictionary, n_iters=50, per_sample=0.40):
     """
     Bootstraps (resamples) {per_sample} from a given fraction of a given biounit {n_iters} times to return measurement
-    
+
     Parameters
     ----------
     data : dataframe with biounit and fraction columns.
@@ -113,40 +117,42 @@ def bootstrap_measurement(data,x,bt_dictionary,n_iters=50,per_sample=0.40):
                      Fraction_2 : percentage_above_threshold_in_fraction_2},
         BIOUNIT_2:  {Fraction_1 : percentage_above_threshold_in_fraction_1,
                      Fraction_2 : percentage_above_threshold_in_fraction_2},
-        } 
-                 
+        }
+
     """
-    def internal_bootstrap(series,threshold,n_iters,per_sample):
+    def internal_bootstrap(series, threshold, n_iters, per_sample):
         """Quick resample and storage in a list {measurements}"""
-        measurements=[]
-        sample_size=int(per_sample*len(series))
+        measurements = []
+        sample_size = int(per_sample*len(series))
         for i in range(n_iters):
             resampled = resample(series, n_samples=sample_size, replace=False)
             above = np.count_nonzero(resampled > threshold)
             percentage = above/len(resampled)*100
             measurements.append(percentage)
         return(measurements)
-        
-    biounits=list(bt_dictionary.keys())
-    fractions=list(set(data.Fraction))
-    biounit_fraction={}
+
+    biounits = list(bt_dictionary.keys())
+    fractions = list(set(data.Fraction))
+    biounit_fraction = {}
     for biounit in biounits:
-        threshold=bt_dictionary[biounit]
-        subset_bunit=data.loc[data.Biounit==biounit]
-        fraction_measurement={}
+        threshold = bt_dictionary[biounit]
+        subset_bunit = data.loc[data.Biounit == biounit]
+        fraction_measurement = {}
         for fraction in fractions:
-            subset_fraction=subset_bunit.loc[subset_bunit.Fraction==fraction]
-            series=subset_fraction[x]
-            fraction_measurement[fraction]=internal_bootstrap(series,threshold,n_iters,per_sample)
-        biounit_fraction[biounit]=fraction_measurement
+            subset_fraction = subset_bunit.loc[subset_bunit.Fraction == fraction]
+            series = subset_fraction[x]
+            fraction_measurement[fraction] = internal_bootstrap(
+                series, threshold, n_iters, per_sample)
+        biounit_fraction[biounit] = fraction_measurement
     return(biounit_fraction)
-                   
-def poe_DIV_meanstd(series1,series2)->tuple:
+
+
+def poe_DIV_meanstd(series1, series2) -> tuple:
     """
-    Propagation of error when dependent variable is calculated 
+    Propagation of error when dependent variable is calculated
     through division of elements of series1 over series2
-    
-    Order matters 
+
+    Order matters
     Parameters
     ----------
     series1 : first numpy array.
@@ -156,11 +162,11 @@ def poe_DIV_meanstd(series1,series2)->tuple:
     -------
     Tuple of ("mean","standard deviation")
     """
-    mean1=np.mean(series1)
-    mean2=np.mean(series2)
-    stdev1=np.std(series1)
-    stdev2=np.std(series2)
-    
+    mean1 = np.mean(series1)
+    mean2 = np.mean(series2)
+    stdev1 = np.std(series1)
+    stdev2 = np.std(series2)
+
     mean = mean1/mean2
     a = stdev1/mean1
     b = stdev2/mean2
@@ -168,14 +174,15 @@ def poe_DIV_meanstd(series1,series2)->tuple:
     b = b*b
     e = (a+b)**0.5
     sd = mean*e
-    mean=str(round(mean,3))
-    sd=str(round(sd,3))
-    return(mean,sd)
-    
-def NED_calculation(provided_dictionary)->pd.DataFrame:
+    mean = str(round(mean, 3))
+    sd = str(round(sd, 3))
+    return(mean, sd)
+
+
+def NED_calculation(provided_dictionary) -> pd.DataFrame:
     """
     NED = Number, Enrichment, Depletion
-    
+
 
     Parameters
     ----------
@@ -185,65 +192,35 @@ def NED_calculation(provided_dictionary)->pd.DataFrame:
     -------
     Pandas DataFrame to display
     """
-    biounits=list(provided_dictionary.keys())
-    biounit_dictionary={}
+    biounits = list(provided_dictionary.keys())
+    biounit_dictionary = {}
     for biounit in biounits:
-        ned_dic={}
-        fraction_measure_dic=provided_dictionary[biounit]
-        pm=np.array(fraction_measure_dic["PM"])
-        ss=np.array(fraction_measure_dic["S"])
-        mg=np.array(fraction_measure_dic["M"])
-        
-        number=(str(round(np.mean(pm),3)),str(round(np.std(pm),3)))
-        enrichment=poe_DIV_meanstd(ss,pm)
-        depletion=poe_DIV_meanstd(pm,mg)
-        
-        n_dis=" ± ".join(number)
-        e_dis=" ± ".join(enrichment)
-        d_dis=" ± ".join(depletion)
-        
-        ned_dic["Number"]=n_dis
-        ned_dic["Enrichment"]=e_dis
-        ned_dic["Depletion"]=d_dis
-        biounit_dictionary[biounit]=ned_dic
-    final_result=pd.DataFrame.from_dict(biounit_dictionary)
+        ned_dic = {}
+        fraction_measure_dic = provided_dictionary[biounit]
+        pm = np.array(fraction_measure_dic["PM"])
+        ss = np.array(fraction_measure_dic["S"])
+        mg = np.array(fraction_measure_dic["M"])
+
+        number = (str(round(np.mean(pm), 3)), str(round(np.std(pm), 3)))
+        enrichment = poe_DIV_meanstd(ss, pm)
+        depletion = poe_DIV_meanstd(pm, mg)
+
+        n_dis = " ± ".join(number)
+        e_dis = " ± ".join(enrichment)
+        d_dis = " ± ".join(depletion)
+
+        ned_dic["Number"] = n_dis
+        ned_dic["Enrichment"] = e_dis
+        ned_dic["Depletion"] = d_dis
+        biounit_dictionary[biounit] = ned_dic
+    final_result = pd.DataFrame.from_dict(biounit_dictionary)
     final_result.reset_index(inplace=True)
     return(final_result)
-#%% END OF FUNCTIONs
-#%% Classes for Enrichment TopLevel
+# %% END OF FUNCTIONs
+# %% Classes for Enrichment TopLevel
+
+
 class BiounitsFrame():
-
-    def show_graph(self, *args):
-
-        # get what was selected
-        selected_biounit = self.biounit_selected.get()
-        selected_fraction = self.fraction_selected.get()
-
-        # forget everything not shown
-        self.forget_all_graphs()
-
-        # select a widget to be shown
-        sel_fram = self.biounit_fractionframe_dic[selected_biounit]
-        sel_fram.show_fraction(selected_fraction)
-
-    def forget_all_graphs(self):
-        fractionframes = list(self.biounit_fractionframe_dic.values())
-        widgets = []
-        for item in fractionframes:
-            widgets += list(item.fraction_widget_dic.values())
-        for widget in widgets:
-            widget.pack_forget()
-
-    def yield_btdictionary(self):
-        """
-        Returns a dictionary of the form {Biounit:Threshold}
-        """
-        dic = {}
-        for biounit in self.biounits:
-            sel_fram = self.biounit_fractionframe_dic[biounit]
-            thresh = sel_fram.t
-            dic[biounit] = thresh
-        return(dic)
 
     def __init__(self, master, data, x, y):
 
@@ -305,40 +282,42 @@ class BiounitsFrame():
         self.biounit_selected.trace("w", self.show_graph)
         self.fraction_selected.trace("w", self.show_graph)
 
+    def show_graph(self, *args):
+
+        # get what was selected
+        selected_biounit = self.biounit_selected.get()
+        selected_fraction = self.fraction_selected.get()
+
+        # forget everything not shown
+        self.forget_all_graphs()
+
+        # select a widget to be shown
+        sel_fram = self.biounit_fractionframe_dic[selected_biounit]
+        sel_fram.show_fraction(selected_fraction)
+
+    def forget_all_graphs(self):
+        fractionframes = list(self.biounit_fractionframe_dic.values())
+        widgets = []
+        for item in fractionframes:
+            widgets += list(item.fraction_widget_dic.values())
+        for widget in widgets:
+            widget.pack_forget()
+
+    def yield_btdictionary(self):
+        """
+        Returns a dictionary of the form {Biounit:Threshold}
+        """
+        dic = {}
+        for biounit in self.biounits:
+            sel_fram = self.biounit_fractionframe_dic[biounit]
+            thresh = sel_fram.t
+            dic[biounit] = thresh
+        return(dic)
+
+
 class FractionsFrame():
-
-    def show_fraction(self, fraction):
-        widget = self.fraction_widget_dic[fraction]
-        widget.pack()
-
-    def replace_line(self, event):
-        if event.inaxes==None:
-            return()
-        self.t = event.xdata
-        _private = [line.set_xdata(self.t) for line in self.lines]
-        self.update_textboxes()
-        self.redraw_canvases()
-
-    def redraw_canvases(self):
-        canvases = list(self.fraction_canvas_dic.values())
-        for canvas in canvases:
-            canvas.draw()
-
-    def update_textboxes(self):
-        for fraction in self.fraction_textboxes:
-            subset = self.data.loc[self.data["Fraction"] == fraction]
-            series = subset[self.x]
-            left = np.count_nonzero(series < self.t)/len(series)*100
-            left = round(left, 2)
-            right = 100-left
-            right = round(right, 2)
-            display = "Left:   "+str(left)+"%"+"\n"+"Right: "+str(right)+"%"
-            textboxes = self.fraction_textboxes[fraction]
-            textboxes[0].set_text(display)
-            textboxes[1].set_text(display)
-
     def __init__(self, frame, data, fractions, x, y):
-        
+
         self.data = data
         self.x = x
         self.t = 1.0
@@ -361,7 +340,7 @@ class FractionsFrame():
             ds = figure.add_subplot(122)
 
             sns.scatterplot(data=subset, x=x, y=y, ax=sc, s=1)
-            sns.histplot(data=subset, x=x, ax=ds,stat="density")
+            sns.histplot(data=subset, x=x, ax=ds, stat="density")
 
             canvas = FigureCanvasTkAgg(figure, master=frame)
             widget = canvas.get_tk_widget()
@@ -393,16 +372,41 @@ class FractionsFrame():
         # %%Connect controling lines
         control_list = [figure.canvas.callbacks.connect(
             "button_press_event", self.replace_line) for figure in list(self.fraction_figure_dic.values())]
+
+    def show_fraction(self, fraction):
+        widget = self.fraction_widget_dic[fraction]
+        widget.pack()
+
+    def replace_line(self, event):
+        if event.inaxes == None:
+            return()
+        self.t = event.xdata
+        _private = [line.set_xdata(self.t) for line in self.lines]
+        self.update_textboxes()
+        self.redraw_canvases()
+
+    def redraw_canvases(self):
+        canvases = list(self.fraction_canvas_dic.values())
+        for canvas in canvases:
+            canvas.draw()
+
+    def update_textboxes(self):
+        for fraction in self.fraction_textboxes:
+            subset = self.data.loc[self.data["Fraction"] == fraction]
+            series = subset[self.x]
+            left = np.count_nonzero(series < self.t)/len(series)*100
+            left = round(left, 2)
+            right = 100-left
+            right = round(right, 2)
+            display = "Left:   "+str(left)+"%"+"\n"+"Right: "+str(right)+"%"
+            textboxes = self.fraction_textboxes[fraction]
+            textboxes[0].set_text(display)
+            textboxes[1].set_text(display)
+
+
 # %% END
 
 class InformationFrame():
-    def update(self, bt_dictionary):
-        for bunit in bt_dictionary.keys():
-            threshold = round(bt_dictionary[bunit], 3)
-            display = f"{bunit} : {threshold}"
-            label = self.biounit_label_dic[bunit]
-            label["text"] = display
-
     def __init__(self, master, bt_dictionary):
         self.master = master
         self.biounit_label_dic = {}
@@ -413,23 +417,32 @@ class InformationFrame():
             self.biounit_label_dic[biounit] = label
 
         self.update(bt_dictionary)
+
+    def update(self, bt_dictionary):
+        for bunit in bt_dictionary.keys():
+            threshold = round(bt_dictionary[bunit], 3)
+            display = f"{bunit} : {threshold}"
+            label = self.biounit_label_dic[bunit]
+            label["text"] = display
+
+
 # %% END
 
 class EnrichmentTopLevel():
 
     def __init__(self, data, x="YEL-HLog", y="FSC-HLog"):
-        #plt.style.use("ggplot")
+        # plt.style.use("ggplot")
         plt.style.use("tableau-colorblind10")
-        #plt.style.use("fivethirtyeight")
-        #plt.style.use("seaborn-darkgrid")
+        # plt.style.use("fivethirtyeight")
+        # plt.style.use("seaborn-darkgrid")
         self.master = tk.Toplevel()
-        self.x=x
-        self.data=data
+        self.x = x
+        self.data = data
         self.biounits_structure = None
         self.information_structure = None
         self.bt_dictionary = {}
         self.backend_result = None
-        
+
         self.master.title("Number, Enrichment, & Depletion Menu")
         # %%Create a BiounitFrame -> stores Graphs
         biounits_frame = tk.Frame(master=self.master)
@@ -465,53 +478,55 @@ class EnrichmentTopLevel():
         control_list = [figure.canvas.callbacks.connect(
             "button_press_event", self.update_btdictionary) for figure in figures]
         # %%Adding option for backend
-        tk.Button(master=info_fr,text="Replicate-based",command=self.replicate_backend).pack()
-        tk.Button(master=info_fr,text="Bootstrap-based",command=self.bootstrap_backend).pack()
+        tk.Button(master=info_fr, text="Replicate-based",
+                  command=self.replicate_backend).pack()
+        tk.Button(master=info_fr, text="Bootstrap-based",
+                  command=self.bootstrap_backend).pack()
         # %%ENDING
         self.master.mainloop()
 
     def update_btdictionary(self, *args):
         self.bt_dictionary = self.biounits_structure.yield_btdictionary()
         self.information_structure.update(self.bt_dictionary)
-        
 
-        
     def replicate_backend(self):
         """calculations according to repeated measurements"""
-        x=self.x
-        data=self.data
-        bt_dictionary=self.bt_dictionary
-        dictionary=replicate_measurement(data,x,bt_dictionary)
-        dataframe=NED_calculation(dictionary)
-        
+        x = self.x
+        data = self.data
+        bt_dictionary = self.bt_dictionary
+        dictionary = replicate_measurement(data, x, bt_dictionary)
+        dataframe = NED_calculation(dictionary)
+
         if self.backend_result == None:
             self.create_backend_display(dataframe)
         else:
             self.update_backend_display(dataframe)
-        
+
     def bootstrap_backend(self):
         """calculations according to bootstrapped measurements"""
-        x=self.x
-        data=self.data
-        bt_dictionary=self.bt_dictionary
-        dictionary=bootstrap_measurement(data,x,bt_dictionary)
-        dataframe=NED_calculation(dictionary)
-        
+        x = self.x
+        data = self.data
+        bt_dictionary = self.bt_dictionary
+        dictionary = bootstrap_measurement(data, x, bt_dictionary)
+        dataframe = NED_calculation(dictionary)
+
         if self.backend_result == None:
             self.create_backend_display(dataframe)
         else:
             self.update_backend_display(dataframe)
-            
-    def create_backend_display(self,dataframe):
-        backendres_fr=tk.Frame(master=self.master)
-        backendres_fr.pack(side="right",anchor="nw")
-        self.backend_result=Table(parent=backendres_fr,dataframe=dataframe)
+
+    def create_backend_display(self, dataframe):
+        backendres_fr = tk.Frame(master=self.master)
+        backendres_fr.pack(side="right", anchor="nw")
+        self.backend_result = Table(parent=backendres_fr, dataframe=dataframe)
         self.backend_result.show()
-        
-    def update_backend_display(self,dataframe):
-        self.backend_result.model.df=dataframe
+
+    def update_backend_display(self, dataframe):
+        self.backend_result.model.df = dataframe
         self.backend_result.redraw()
-#%% Class for XY selector
+# %% Class for XY selector
+
+
 class XYSelectorTopLevel():
     """Tkinter toplevel here just to select X and Y variable"""
 
@@ -539,4 +554,3 @@ class XYSelectorTopLevel():
         self.y = y.variable
         tk.Button(master=self.master, text="LOAD", command=self.select_xy).grid(
             row=0, column=2, rowspan=2, sticky="nsew")
-
