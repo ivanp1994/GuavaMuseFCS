@@ -206,8 +206,9 @@ def NED_calculation(provided_dictionary)->pd.DataFrame:
         ned_dic["Enrichment"]=e_dis
         ned_dic["Depletion"]=d_dis
         biounit_dictionary[biounit]=ned_dic
-    final_result=pd.DataFrame.from_dict(biounit_dictionary)
+    final_result=pd.DataFrame.from_dict(biounit_dictionary).T
     final_result.reset_index(inplace=True)
+
     return(final_result)
 #%% END OF FUNCTIONs
 #%% Classes for Enrichment TopLevel
@@ -468,7 +469,6 @@ class EnrichmentTopLevel():
         tk.Button(master=info_fr,text="Replicate-based",command=self.replicate_backend).pack()
         tk.Button(master=info_fr,text="Bootstrap-based",command=self.bootstrap_backend).pack()
         # %%ENDING
-        self.master.mainloop()
 
     def update_btdictionary(self, *args):
         self.bt_dictionary = self.biounits_structure.yield_btdictionary()
