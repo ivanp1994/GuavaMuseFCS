@@ -10,7 +10,7 @@ from tkinter import filedialog
 
 from .musefcsparser import parse, text_explanation
 from .gating import GUIgating_outline as guigo
-from .gui_enrichment import XYSelectorTopLevel
+
 from .supplemental import ManualEntry
 
 
@@ -177,9 +177,7 @@ class MDSS():
                                command=lambda: guigo(self.data))
         gating_but.grid(row=0, column=5)
 
-        enrichment_but = tk.Button(
-            master=frame, text="ENRICHMENT", command=lambda: XYSelectorTopLevel(self.data))
-        enrichment_but.grid(row=0, column=6)
+
 
         # stores this frame in mainclass.frames list for better removal
         mainclass.frames.append(self)
