@@ -207,4 +207,5 @@ We now loaded a dataset about penguins. Start Drawing interface with the followi
 ```
 from GuavaMuseFCS import DrawTopLevel
 app=DrawTopLevel(None,data)
+app.start()
 ```
