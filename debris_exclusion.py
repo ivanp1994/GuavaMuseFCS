@@ -348,6 +348,7 @@ class DebrisDataManager():
         self.input_data = self.data.loc[self.data.Replicate.isin(self.inputs)]
         self.debris_info = RealDebrisTopLevel(self.input_data)
         self.debris_info.master.protocol("WM_DELETE_WINDOW", self.end_debri)
+        
 
     def end_debri(self):
 
@@ -361,6 +362,7 @@ class DebrisDataManager():
             lis.append(ss)
         self.selected_data = pd.concat(lis)
         self.selected_data.reset_index(inplace=True, drop=True)
+        tk.Label(master=self.master, text="Debris Removed").pack()
 
     def __init__(self, data):
 
@@ -381,6 +383,6 @@ class DebrisDataManager():
             anchor="nw", expand=True, fill="both")
         tk.Button(master=self.master, text="Select X&Y", command=self.start_xy_selection).pack(
             anchor="nw", expand=True, fill="both")
-        tk.Button(master=self.master, text="Exclude Debri", command=self.start_debris_excl).pack(
+        tk.Button(master=self.master, text="Exclude Debris", command=self.start_debris_excl).pack(
             anchor="nw", expand=True, fill="both")
-        self.information_label = tk.Label(master=self.master, text="").pack()
+        

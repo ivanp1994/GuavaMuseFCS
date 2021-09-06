@@ -273,7 +273,7 @@ class BiounitsFrame():
                 self.biounits.remove(biounit)
                 continue
             # create radiobuttons to control Biounit
-            rb = tk.Radiobutton(master=bt_biounit_frame, indicatoron=0, width=5,
+            rb = tk.Radiobutton(master=bt_biounit_frame, indicatoron=0, width=20,
                                 value=biounit, text=biounit, variable=self.biounit_selected)
             rb.pack(anchor="w", side="right")
 
@@ -372,7 +372,7 @@ class FractionsFrame():
 
             canvas = FigureCanvasTkAgg(figure, master=frame)
             widget = canvas.get_tk_widget()
-            figure.subplots_adjust(bottom=0.100)
+            figure.subplots_adjust(bottom=0.200)
 
             # %% Create a textbox
             series = subset[x]
@@ -521,9 +521,9 @@ class EnrichmentTopLevel():
             "button_press_event", self.update_btdictionary) for figure in figures]
         # Adding option for backend
 
-        tk.Button(master=info_fr, text="Replicate-based",
+        tk.Button(master=info_fr, text="Replicate-based",width=20,
                   command=self.replicate_backend).pack()
-        tk.Button(master=info_fr, text="Bootstrap-based",
+        tk.Button(master=info_fr, text="Bootstrap-based",width=20,
                   command=self.bootstrap_backend).pack()
 
     def update_btdictionary(self, *args):
@@ -579,6 +579,7 @@ class XYSelectorTopLevel():
         y = self.y.get()
         data = self.data
         create_bunit_frac(data)
+        self.master.destroy()
         EnrichmentTopLevel(data, x, y)
 
     def __init__(self, data):
