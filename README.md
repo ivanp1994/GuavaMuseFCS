@@ -1,7 +1,30 @@
-# GuavaMuseFCS-Enrichment branch
+# Enrichment and Debris Removal branch
 
-Enrichment branch is functionally the same as main branch, but there are additional features implemented in the form of quantifying both number and enrichment percentage of cells after some operation.
+Enrichment branch is functionally the same as main branch, but there are additional features implemented. Additional features are:
+1. Calculating enrichment of a procedure
+2. Informatically excluding cellular debris
+
 Enrichment branch is relatively rigid (as opposed to main branch) in what it can take as input. This rigidity manifests itself in naming scheme of recorded samples.
+Additionally, if one wants to exclude debris, a .CSV file that accompanies .FCS file is required.
+
+## Naming scheme <a name="naming"></a>
+
+## Example dataset provided
+
+Example given here is an uniform suspension of testicular cells of a mouse. Each mouse is considered one separate biounit. 
+Uniform suspension of testicular cells consists of many different cell types - including spermatogonia, spermatides, Leydig cells, spermatozoa, etc.
+Spermatogonia express c-kit receptor, and they are subsequently marked with phycoerythryn (PE) marked antibody (PE-antibody). Magnetic nanobeads that recognize PE are then added to the mixture, and suspension is subjected to
+[magnetically activated cell sorting](https://en.wikipedia.org/wiki/Magnetic-activated_cell_sorting) that results in fraction enriched for spermatogonia, and fraction depleted of spermatogonia.
+
+The procedure results in four fractions per mouse. Additionally, PE can be detected through GuavaMuse through YEL parameter. The problem is that all cells demonstrate some level of yellow flourescence in
+a phenomenon called "[autoflourescence](https://en.wikipedia.org/wiki/Autofluorescence)". To differentiate spermatogonia from autoflorescent cells, PE-unmarked fraction ("INP") must be recorded to calibrate GuavaMuse sample collecting.
+PE-marked fraction ("PM") will then be recorded and if marking is successful - there will be a population of cells to the right of YEL-HLog parameter corresponding to PE-marked spermatogonia. Next, spermatogonia are magnetically separated into a fraction enriched for spermatogonia ("S)
+and fraction depleted of spermatogonia ("M").
+
+Our dataset consists of 2 mouse - one which has been subjected to a mild experiment, and one that served as a control to that experiment. Each mouse has 4 fractions, to the total number of 8 different samples. Additionally, every sample has been 3 three times in quick succession on Guava Muse, to a total of 24 Guava Muse "samples".
+
+
+## Enrichment procedure
 
 The purpose of the enrichment branch is to quantify and visualize percentage of cells positive for certain condition and enrichment of those cells after a certain operation.
 Enrichment branch makes use of **"Biounit"** - which is a unit defined by some biological criteria (e.g. a mouse or cell type), and **"Fraction"** which is one part of "marking and enriching" operation.
@@ -15,103 +38,36 @@ Procedure goes roughly like this:
 
 Each of those 4 stages is a different fraction of the same biounit. Allowed fraction names are "INP", "PM", "S", and "M".
 
-# Example on MACS for mouse spermatogonia
+## Debris removal
 
-Example given here is an uniform suspension of testicular cells of a mouse. Each mouse is considered one separate biounit. 
-Uniform suspension of testicular cells consists of many different cell types - including spermatogonia, spermatides, Leydig cells, spermatozoa, etc.
-Spermatogonia express c-kit receptor, and they are subsequently marked with phycoerythryn (PE) marked antibody (PE-antibody). Magnetic nanobeads that recognize PE are then added to the mixture, and suspension is subjected to
-[magnetically activated cell sorting](https://en.wikipedia.org/wiki/Magnetic-activated_cell_sorting) that results in fraction enriched for spermatogonia, and fraction depleted of spermatogonia.
+One of the problems in flow cytometry is existence of cellular debris - fragments of cells that are present in the uniform suspension. These fragments can be recorded by flow cytometry and be easily mistaken for cells - hence the precise terminology for one event recorded in flow cytometry is *event*, not cell. There are various ways to exclude debris, ranging from chemical treatments, through bioinformatic endeavors. The way presented here is the latter one. Note that Guava Muse also has option to exclude debris when events are collected. But if you didn't take advantage of Muse's debris exclusion feature, and instead recorded every event regardless of event size, the only choice for debris removal is through informatical methods.
 
-The procedure results in four fractions per mouse. Additionally, PE can be detected through GuavaMuse through YEL parameter. The problem is that all cells demonstrate some level of yellow flourescence in
-a phenomenon called "[autoflourescence](https://en.wikipedia.org/wiki/Autofluorescence)". To differentiate spermatogonia from autoflorescent cells, PE-unmarked fraction ("INP") must be recorded to calibrate GuavaMuse sample collecting.
-PE-marked fraction ("PM") will then be recorded and if marking is successful - there will be a population of cells to the right of YEL-HLog parameter corresponding to PE-marked spermatogonia. Next, spermatogonia are magnetically separated into a fraction enriched for spermatogonia ("S)
-and fraction depleted of spermatogonia ("M"). Example histogram is given below:
+Our method is latter, and it is based on the following idea. Guava Muse device is fundametally a cell counter, but like with every cell counter, it requires that the user has at least approximate idea of how much cells per microliter are in a sample - too concentrated or too diluted sample means that measurement will be imprecise (too concentrated sample might even clog the capillary of the device). Ideally, user has precounted his input sample with a hemocytometer and he knows how much cells will be in his input sample. The problem then is to determine a threshold to exclude cells, untill the number of cells is equal to the number of cells that the user knows is (more or less) true. 
 
-![mouse example](https://user-images.githubusercontent.com/84333373/118981191-606f7d00-b97a-11eb-91cd-78b5faac00ed.png)
+By clicking on **Remove Debris** a window opens.
 
-Histogram for biounit (mouse) "C_1" and various fractions. Fractions are sorted from least amount of PE-positive cells to most amount of PE-positive cells ("INP","M","PM","S").
+![debris intro](https://user-images.githubusercontent.com/84333373/132226947-bf8314af-63a9-4c42-b691-47a4620b9b15.PNG)
 
+Clicking on **Select Input** opens a new window in which user can select the samples to undergo debris exclusion.
 
+![debris select input](https://user-images.githubusercontent.com/84333373/132226951-eb71cebb-71fb-4f36-9d51-7c4047222f49.PNG)
 
-Enrichment branch is initialized the same as main branch through:
+Clicking on **Finalize** destroys the window. Now, user has to input X and Y values that will be used to plot a scatterplot. Clicking on **Select X&Y** opens a new window.
 
-```
-from museInterface import start_interface
-start_interface()
-```
-This results in standard interface, same as one in main:
+![debris select xy](https://user-images.githubusercontent.com/84333373/132226952-522d340c-45c9-41a9-9b42-c4304f047ddd.PNG)
 
-![initial](https://user-images.githubusercontent.com/84333373/118638099-c7543100-b7d6-11eb-940b-327e2655334b.PNG)
+Clicking on **Load** destroys the window. Now, user has to manually set a threshold for Y value. This threshold will apply to all biounits (see [Naming Scheme section](#naming)).
 
-After adding one or more files, in order for the next part to work, user must legendize samples to a compliant form. 
+The top row of buttons changes the Biounit, the bottom row of buttons changes the Input Fraction displayed. Clicking on the graph sets a horizontal line and updates the graph to show what cell concentration is after placement. The bottom most row consists of a table in which the user can track the average number of cells per microliter, and the average Y value threshold. After setting thresholds, and double checking, all user has to do is exit the *Debris Exclusion* window.
 
-Compliant form of samples must be of the form "Fraction"-"Biounit". Example is given here:
+Before setting threshold:
 
-![text file example](https://user-images.githubusercontent.com/84333373/118640838-b8bb4900-b7d9-11eb-9ee2-4736fd6d1dcb.PNG)
+![debirs_excl1](https://user-images.githubusercontent.com/84333373/132226942-41dc5dcd-6bf4-4fdc-a66c-3dfee91bbfc6.PNG)
 
-After legendization and merging datafiles, the interface looks like this:
+After setting threshold:
 
-![initial](https://user-images.githubusercontent.com/84333373/121691256-17b56a80-cac7-11eb-8516-5a9b7db698a6.PNG)
+![debirs_excl2](https://user-images.githubusercontent.com/84333373/132226946-24344fc3-c116-41f2-a128-67d78119e5d0.PNG)
 
-The difference is in the option for Enrichment.
+After exiting the window, the original window is now update to remind the user that debris has been excluded from this *Merged Data* structure.
 
-
-# Enrichment
-
-Clicking Enrichment opens a new window
-
-![xyselector](https://user-images.githubusercontent.com/84333373/121691343-3156b200-cac7-11eb-9054-79d99cec177a.PNG)
-
-- X Value
-This is a name of numeric column on which enrichment procedure is measured. In our example of mouse spermatogonia, X Value would be YEL-HLog
-
-- Y Value
-This is a name of numeric column that will be the Y axis of the scatterplot
-
-Clicking Load opens a new window
-
-![ned_menu](https://user-images.githubusercontent.com/84333373/121691524-6105ba00-cac7-11eb-8eb4-a5bb0d0d7d7d.PNG)
-
-The upper row contains biounits. The row below contains fractions.
-Clicking on the buttons switches from biounit to biounit, or from fraction to fraction, changing the display of the scatterplot and histogram plot.
-
-## Display
-
-Two plots are displayed, right below rows containing fractions. One is scatterplot, and the other is histogram plot. 
-On both plots are two red lines, intersecting at a set X value. This X value will be called **threshold**. Clicking on the buttons below the plots changes the position of the two red lines and the threshold. 
-The current X value of red lines is displayed in the middle of the buttons. It's also possible to change the coordinate, and the threshold value, by typing in a valid value (integer or float, both x.x and x,x format are accepted). Clicking on the graph also sets the red line where you clicked.
-
-Changing the position of the red lines changes the textbox in the upper right corner of the graphs. Textbox displays what percentage of the data is to the left and to the right of the red lines at any given time. 
-
-To the right of graphs is a table detailing threshold of all biounits. After all thresholds are set adequately, the display looks like this.
-
-![ned_menu_after](https://user-images.githubusercontent.com/84333373/121692871-d32ace80-cac8-11eb-9f3f-10d0ace6bed4.PNG)
-
-Clicking "Load" enables calculation of number, enrichment, and depletion.
-
-## Enrichment calculation
-
-What will be calculated next is the percentage of *X Values* **above** the threshold in other fractions.
-
-- **%Number** will be equal to the percentage of "PM" fraction that is above the threshold
-- **Enrichment** is calculated as a ratio of percentage of "S" fraction above the calculated percentile value, and percentage of "PM" fraction above that same value
-- **Depletion** is calculated as a ratio of percentage of "PM" fraction above the calculated percentile value, and percentage of "M" fraction above that same value
-
-Standard deviation for the latter two is calculated through [*propagation of error/uncertainty*](https://en.wikipedia.org/wiki/Propagation_of_uncertainty#Resistance_measurement)
-
-There are two main options to calculate means and standard deviations.
-
-### Replicate
-
-If technical replicates of biounits and fraction were taken - one biounit/fraction measured multiple times on Guava Muse cytometer, clicking on Replicate, and then Calculate gives the following graph:
-
-![ned_menu_repllicate](https://user-images.githubusercontent.com/84333373/121696637-8cd76e80-cacc-11eb-9da5-43dcad4bc3f0.PNG)
-
-There is a tabular representation of results to the right, and graphical representation of tabular results below. 
-
-### Bootstrap
-
-Bootstrap option works by pooling all technical replicates (or not, if there are no technical replicate), then "resampling" from that pool a number of times. 
-For example, if the pool were (1,2,5,6,7), and sampling 3 values from that pool 2 times would yield (1,2,5) or (2,5,7). The number of times a "resample" will happen is dicated by **Iterations** and it can only be a positive integer. The size or a "resampled" sample is dictated by **Sample Size%** and it can be any number between 1 and 100. Be warned, for extreme values, e.g. 10000 iterations, the procedure will take some time. The result will be given same as for the *Replicate* option. 
-
-![ned_menu_bootstrap](https://user-images.githubusercontent.com/84333373/121697838-be046e80-cacd-11eb-9739-4a518a9314bb.PNG)
+![debris intro_after](https://user-images.githubusercontent.com/84333373/132226948-e3847e1a-85ae-4617-bd9b-99d43030e80f.PNG)
