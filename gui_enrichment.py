@@ -560,7 +560,7 @@ class EnrichmentTopLevel():
     def create_backend_display(self, dataframe):
         """Create backend display"""
         backendres_fr = tk.Frame(master=self.master)
-        backendres_fr.pack(side="right", anchor="nw")
+        backendres_fr.pack(side="right", anchor="nw",fill="x",expand=True)
         self.backend_result = Table(parent=backendres_fr, dataframe=dataframe)
         self.backend_result.show()
 

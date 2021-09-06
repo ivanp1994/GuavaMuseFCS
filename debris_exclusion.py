@@ -92,8 +92,9 @@ class RealDebrisTopLevel():
 
     def change_replicates_buttons(self, *args):
         curr_biounit = self.biounitVar.get()
-
-        self.curr_active.grid_forget()
+        if self.curr_active != None:
+            self.curr_active.grid_forget()
+    
         self.curr_active = self.biounit_replicate_dic[curr_biounit]
         self.curr_active.grid(row=1, column=0, sticky="nw")
 
@@ -104,8 +105,8 @@ class RealDebrisTopLevel():
         self.replicateVar.set(first)
 
     def change_graph_shown(self, *args):
-
-        self.curr_graph.hide()
+        if self.curr_graph != None:
+            self.curr_graph.hide()
         replicate_graph = self.replicate_graph_dic[self.replicateVar.get()]
         replicate_graph.place(r=5, c=0,)
         self.curr_graph = replicate_graph
@@ -150,7 +151,7 @@ class RealDebrisTopLevel():
         for item in biounits:
             s = self.data.loc[self.data.Biounit == item]
             replicates = list(dict.fromkeys(s.Replicate))
-            bt = tk.Radiobutton(master=biounit_frame, indicatoron=0, width=10,
+            bt = tk.Radiobutton(master=biounit_frame, indicatoron=0, width=20,
                                 value=item, text=item, variable=self.biounitVar)
             bt.grid(row=0, column=i, sticky="nw")
             i = i+1
@@ -160,7 +161,7 @@ class RealDebrisTopLevel():
             supp = []
             for item2 in replicates:
 
-                bt = tk.Radiobutton(master=curr_frame, indicatoron=0, width=10,
+                bt = tk.Radiobutton(master=curr_frame, indicatoron=0, width=20,
                                     value=item2, text=item2, variable=self.replicateVar)
                 bt.grid(row=0, column=j, sticky="nw")
 
@@ -190,6 +191,7 @@ class RealDebrisTopLevel():
         # create current active for tracking purpose
         self.curr_active = first_frame  # ->Current frame for Replicate buttons
         self.curr_graph = current_graph_fr
+        
 
         # I need an information segment
         # [Biounit] [...] [...] [...] ...
@@ -203,7 +205,14 @@ class RealDebrisTopLevel():
             average = round(np.average(cells))
             _biounit_cell[biounit] = average
         """
-        DebrisInformationSegment(self.master, self.biounits, self.get_info)
+        infoseg=DebrisInformationSegment(self.master, self.biounits, self.get_info)
+        
+        # Connect changes to figure to changes in updatating DebrisInformationSegment
+        input_frames=list(self.replicate_graph_dic.values())
+        figures=[item.figure for item in input_frames]
+        control_list = [figure.canvas.callbacks.connect(
+            "button_press_event", infoseg.update) for figure in figures]
+        
 
 
 class DebrisInformationSegment():
@@ -224,9 +233,9 @@ class DebrisInformationSegment():
         self.update()
         update_bt = tk.Button(
             master=self.frame, text="Update", command=self.update)
-        update_bt.grid(row=0, column=0, rowspan=3, sticky="nsew",)
+        #update_bt.grid(row=0, column=0, rowspan=3, sticky="nsew",)
 
-    def update(self):
+    def update(self,*args):
 
         # Block for destroying
         for item in self.labels:
@@ -287,14 +296,6 @@ class InputSelector():
 class XYSelectorTopLevel():
     """Tkinter toplevel here just to select X and Y variable"""
 
-    def select_xy(self):
-        """Finalizes X Y selection and self-destructs"""
-        x = self.x.get()
-        y = self.y.get()
-        data = self.data
-        self.master.destroy()
-        RealDebrisTopLevel(data, x, y)
-
     def bind_finalization(self, func):
         self.finalize_bt.bind("<Button-1>", func)
 
@@ -330,6 +331,7 @@ class DebrisDataManager():
         xy_selector = self.xy_selector
         self.x = xy_selector.x.get()
         self.y = xy_selector.y.get()
+        xy_selector.master.destroy()
         print(self.x, self.y)
 
     def start_input_selection(self):
