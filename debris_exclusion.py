@@ -18,12 +18,7 @@ from .supplemental import get_numerical, ModifiedOptionMenu
 from .gui_enrichment import create_bunit_frac
 
 
-##USED
-
-
-
-
-
+# USED
 
 
 class InputReplicateFrame():
@@ -114,25 +109,26 @@ class RealDebrisTopLevel():
         replicate_graph = self.replicate_graph_dic[self.replicateVar.get()]
         replicate_graph.place(r=5, c=0,)
         self.curr_graph = replicate_graph
-    
+
     def get_info(self):
-        
-        _biounit_th={}
-        _biounit_num={}
-        
+
+        _biounit_th = {}
+        _biounit_num = {}
+
         for biounit in self.biounits:
-            graphs=self.biounit_graph_dic[biounit]
-            cell_th=[graph.cellsizethreshold for graph in graphs]
-            cell_num=[graph.cellnumber*graph.percentage_selected for graph in graphs]
-            av_th=np.average(cell_th)
-            av_num=np.average(cell_num)
-            
-            _biounit_th[biounit]=round(av_th,4)
-            _biounit_num[biounit]=round(av_num)
-        #print(_biounit_num)
-        #print(_biounit_th)
-        return(_biounit_th,_biounit_num)
-            
+            graphs = self.biounit_graph_dic[biounit]
+            cell_th = [graph.cellsizethreshold for graph in graphs]
+            cell_num = [graph.cellnumber *
+                        graph.percentage_selected for graph in graphs]
+            av_th = np.average(cell_th)
+            av_num = np.average(cell_num)
+
+            _biounit_th[biounit] = round(av_th, 4)
+            _biounit_num[biounit] = round(av_num)
+        # print(_biounit_num)
+        # print(_biounit_th)
+        return(_biounit_th, _biounit_num)
+
     def __init__(self, data, x="YEL-HLog", y="FSC-HLog"):
         self.master = tk.Toplevel()
         self.data = data
@@ -142,7 +138,7 @@ class RealDebrisTopLevel():
         self.curr_graph = None
         self.biounit_replicate_dic = {}
         self.replicate_graph_dic = {}
-        self.biounit_graph_dic ={}
+        self.biounit_graph_dic = {}
         self.biounits = list(dict.fromkeys(data.Biounit))
 
         self.master.title("Debris Exclusion")
@@ -161,9 +157,9 @@ class RealDebrisTopLevel():
             self.biounit_replicate_dic[item] = tk.Frame(master=self.master)
             curr_frame = self.biounit_replicate_dic[item]
             j = 0
-            supp=[]
+            supp = []
             for item2 in replicates:
-                
+
                 bt = tk.Radiobutton(master=curr_frame, indicatoron=0, width=10,
                                     value=item2, text=item2, variable=self.replicateVar)
                 bt.grid(row=0, column=j, sticky="nw")
@@ -172,8 +168,8 @@ class RealDebrisTopLevel():
                 self.replicate_graph_dic[item2] = one_graph
                 supp.append(one_graph)
                 j = j+1
-            self.biounit_graph_dic[item]=supp
-        
+            self.biounit_graph_dic[item] = supp
+
         # initialize tracing
         self.biounitVar.trace("w", self.change_replicates_buttons)
         self.replicateVar.trace("w", self.change_graph_shown)
@@ -207,16 +203,16 @@ class RealDebrisTopLevel():
             average = round(np.average(cells))
             _biounit_cell[biounit] = average
         """
-        DebrisInformationSegment(self.master, self.biounits,self.get_info)
+        DebrisInformationSegment(self.master, self.biounits, self.get_info)
 
 
 class DebrisInformationSegment():
-    def __init__(self, master,biounits,update_function):
+    def __init__(self, master, biounits, update_function):
         self.frame = tk.Frame(master=master)
-        self.labels=[]
-        self.biounits=biounits
-        self.retrieving_info=update_function
-        
+        self.labels = []
+        self.biounits = biounits
+        self.retrieving_info = update_function
+
         self.frame.grid(row=3, column=0, sticky="w")
         tk.Label(master=self.frame, text="Biounit", relief="raised",
                  bg="gainsboro").grid(row=0, column=1, sticky="we")
@@ -224,49 +220,53 @@ class DebrisInformationSegment():
                  bg="gainsboro").grid(row=1, column=1, sticky="we")
         tk.Label(master=self.frame, text="Threshold", relief="raised",
                  bg="gainsboro").grid(row=2, column=1, sticky="we")
-        
+
         self.update()
-        update_bt=tk.Button(master=self.frame,text="Update",command=self.update)
-        update_bt.grid(row=0,column=0,rowspan=3,sticky="nsew",)
-        
+        update_bt = tk.Button(
+            master=self.frame, text="Update", command=self.update)
+        update_bt.grid(row=0, column=0, rowspan=3, sticky="nsew",)
+
     def update(self):
-        
-        #Block for destroying
+
+        # Block for destroying
         for item in self.labels:
             item.destroy()
-        self.labels=[]
-        
-        _biounit_threshold,_biounit_cell,=self.retrieving_info()
-        
-        #Block for updating
+        self.labels = []
+
+        _biounit_threshold, _biounit_cell, = self.retrieving_info()
+
+        # Block for updating
         for i in range(len(self.biounits)):
             biounit = self.biounits[i]
             pos = i+2
-            
-            a=tk.Label(master=self.frame, text=biounit, relief="raised",
-                     width=10)
-            b=tk.Label(master=self.frame, text=_biounit_cell[biounit], relief="raised", width=10)
-            
-            c=tk.Label(master=self.frame, text=_biounit_threshold[biounit], relief="raised",
-                     width=10)
-            
+
+            a = tk.Label(master=self.frame, text=biounit, relief="raised",
+                         width=10)
+            b = tk.Label(master=self.frame,
+                         text=_biounit_cell[biounit], relief="raised", width=10)
+
+            c = tk.Label(master=self.frame, text=_biounit_threshold[biounit], relief="raised",
+                         width=10)
+
             a.grid(row=0, column=pos, sticky="we")
             b.grid(row=1, column=pos, sticky="we")
             c.grid(row=2, column=pos, sticky="we")
-            self.labels+=[a,b,c]
-            
+            self.labels += [a, b, c]
+
 
 class InputSelector():
-    
-    def finalize(self,*args):
+
+    def finalize(self, *args):
         indices = self.listbox.curselection()
         selected = [self.listbox.get(i) for i in indices]
         print(selected)
         selected_data = self.data.loc[self.data["Replicate"].isin(selected)]
         XYSelectorTopLevel(selected_data)
         self.master.destroy()
-    def bind_finalization(self,func):
-        self.finalize_bt.bind("<Button-1>",func)
+
+    def bind_finalization(self, func):
+        self.finalize_bt.bind("<Button-1>", func)
+
     def __init__(self, data):
         self.master = tk.Toplevel()
         self.master.title("Selecting inputs")
@@ -280,8 +280,9 @@ class InputSelector():
         self.listbox.grid(row=1, column=0, sticky="nsew")
         tk.Label(master=self.master, text="Select").grid(
             row=0, column=0, sticky="nsew")
-        self.finalize_bt=tk.Button(master=self.master, text="FINALIZE")
+        self.finalize_bt = tk.Button(master=self.master, text="FINALIZE")
         self.finalize_bt.grid(row=2, column=0, sticky="nsew")
+
 
 class XYSelectorTopLevel():
     """Tkinter toplevel here just to select X and Y variable"""
@@ -293,9 +294,10 @@ class XYSelectorTopLevel():
         data = self.data
         self.master.destroy()
         RealDebrisTopLevel(data, x, y)
-    def bind_finalization(self,func):
-        self.finalize_bt.bind("<Button-1>",func)
-        
+
+    def bind_finalization(self, func):
+        self.finalize_bt.bind("<Button-1>", func)
+
     def __init__(self, data):
         """Initializes the selector"""
         master = tk.Toplevel()
@@ -310,71 +312,75 @@ class XYSelectorTopLevel():
         y = ModifiedOptionMenu(self.master, "Y=", columns, None)
         y.place(1, 0)
         self.y = y.variable
-        self.finalize_bt=tk.Button(master=self.master, text="LOAD",)
+        self.finalize_bt = tk.Button(master=self.master, text="LOAD",)
         self.finalize_bt.grid(row=0, column=2, rowspan=2, sticky="nsew")
 ##
+
+
 class DebrisDataManager():
-    def start(self):
-        self.root.mainloop()
-    
-    def finalize_inputselector(self,*args):
-        inputselector=self.input_selector
+
+    def finalize_inputselector(self, *args):
+        inputselector = self.input_selector
         indices = inputselector.listbox.curselection()
-        self.inputs= [inputselector.listbox.get(i) for i in indices]
+        self.inputs = [inputselector.listbox.get(i) for i in indices]
         inputselector.master.destroy()
         print(self.inputs)
-        
-    def finalize_xyselector(self,*args):
-        xy_selector=self.xy_selector
-        self.x=xy_selector.x.get()
-        self.y=xy_selector.y.get()
-        print(self.x,self.y)
-        
+
+    def finalize_xyselector(self, *args):
+        xy_selector = self.xy_selector
+        self.x = xy_selector.x.get()
+        self.y = xy_selector.y.get()
+        print(self.x, self.y)
+
     def start_input_selection(self):
-        data=self.data
-        self.input_selector=InputSelector(data)  
+        data = self.data
+        self.input_selector = InputSelector(data)
         self.input_selector.bind_finalization(self.finalize_inputselector)
-        
+
     def start_xy_selection(self):
-        data=self.data
-        self.xy_selector=XYSelectorTopLevel(data)
+        data = self.data
+        self.xy_selector = XYSelectorTopLevel(data)
         self.xy_selector.bind_finalization(self.finalize_xyselector)
-        
+
     def start_debris_excl(self):
-        if len(self.inputs)==0:
+        if len(self.inputs) == 0:
             return()
-        self.input_data=self.data.loc[self.data.Replicate.isin(self.inputs)]
-        self.debris_info=RealDebrisTopLevel(self.input_data)
-        self.debris_info.master.protocol("WM_DELETE_WINDOW",self.end_debri)
-        
+        self.input_data = self.data.loc[self.data.Replicate.isin(self.inputs)]
+        self.debris_info = RealDebrisTopLevel(self.input_data)
+        self.debris_info.master.protocol("WM_DELETE_WINDOW", self.end_debri)
+
     def end_debri(self):
 
-        t,n=self.debris_info.get_info()
+        t, n = self.debris_info.get_info()
         self.debris_info.master.destroy()
-        biounits=list(t.keys())
-        lis=[]
+        biounits = list(t.keys())
+        lis = []
         for biounit in biounits:
-            s=self.data.loc[self.data.Biounit==biounit]
-            ss=s.loc[s[self.y]>t[biounit]]
+            s = self.data.loc[self.data.Biounit == biounit]
+            ss = s.loc[s[self.y] > t[biounit]]
             lis.append(ss)
-        self.selected_data=pd.concat(lis)
-        self.selected_data.reset_index(inplace=True,drop=True)
-            
-        
-    def __init__(self,data):
-        
-        self.master=tk.Toplevel()
-        self.data=data
-        self.inputs=[]
-        self.input_data=None
-        self.selected_data=None
-        self.x=None
-        self.y=None
-        self.debris_info=None
+        self.selected_data = pd.concat(lis)
+        self.selected_data.reset_index(inplace=True, drop=True)
+
+    def __init__(self, data):
+
+        self.master = tk.Toplevel()
+        self.data = data
+        self.inputs = []
+        self.input_data = None
+        self.selected_data = None
+        self.x = None
+        self.y = None
+        self.debris_info = None
+        self.input_selector = None
+        self.xy_selector = None
         self.master.title("Debris Data Manager")
+
         create_bunit_frac(self.data)
-        tk.Button(master=self.master,text="Select Input",command=self.start_input_selection).pack(anchor="nw",expand=True,fill="both")
-        tk.Button(master=self.master,text="Select X&Y",command=self.start_xy_selection).pack(anchor="nw",expand=True,fill="both")
-        tk.Button(master=self.master,text="Exclude Debri",command=self.start_debris_excl).pack(anchor="nw",expand=True,fill="both")
-        
-        
+        tk.Button(master=self.master, text="Select Input", command=self.start_input_selection).pack(
+            anchor="nw", expand=True, fill="both")
+        tk.Button(master=self.master, text="Select X&Y", command=self.start_xy_selection).pack(
+            anchor="nw", expand=True, fill="both")
+        tk.Button(master=self.master, text="Exclude Debri", command=self.start_debris_excl).pack(
+            anchor="nw", expand=True, fill="both")
+        self.information_label = tk.Label(master=self.master, text="").pack()
