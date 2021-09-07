@@ -6,7 +6,16 @@ This repository houses code for several things:
 4. Provide Graphical User Interface for drawing any dataframe using [seaborn](https://seaborn.pydata.org/) library
 
 Additionally, the branch "gui_enrichment" has several more precise applications
+
 ## Parsing Guava Muse .FCS data
+
+### Requirements
+
+Requirements can be found in requirements.txt file provided, and to install them simply run:
+
+```pip install -r requirements.txt```
+
+None of the requirements are that unsual - the bulk of modules used are tkinter, matplotlib, seaborn, pandas, and numpy. Some lesser known modules are pandastable and sklearn. Likewise, there is no specific version of any module required, and I believe this repository is relatively future-proofed.
 
 ### Intro
 The primary way to parse Guava Muse .FCS data is by using `parse` function which takes a *path* to your .FCS file and outputs
