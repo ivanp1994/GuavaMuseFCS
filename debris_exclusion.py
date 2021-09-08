@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 import matplotlib
 from matplotlib.figure import Figure
+import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import tkinter as tk
 
@@ -69,7 +70,7 @@ class InputReplicateFrame():
         sns.scatterplot(data=u_data, x=x, y=y, ax=scat, s=1)
 
         # draw an initial line
-        self.line = scat.axhline(0, linewidth=1, color=colors[2])
+        self.line = scat.axhline(0, linewidth=3, color=colors[2])
 
         # create a texbox
         display = self.cellnumber*self.percentage_selected
@@ -146,6 +147,7 @@ class RealDebrisTopLevel():
         biounit_frame = tk.Frame(master=self.master)
         biounit_frame.grid(row=0, column=0, sticky="nw")
         biounits = self.biounits
+        plt.style.use("fivethirtyeight")
 
         i = 0
         for item in biounits:

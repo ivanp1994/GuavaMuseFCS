@@ -472,8 +472,8 @@ class EnrichmentTopLevel():
     def __init__(self, data, x="YEL-HLog", y="FSC-HLog"):
 
         #plt.style.use("ggplot")
-        #plt.style.use("tableau-colorblind10") #<-This one proved the best
-        plt.style.use("fivethirtyeight")
+        #plt.style.use("tableau-colorblind10") 
+        plt.style.use("fivethirtyeight") #<-This one proved the best
         #plt.style.use("seaborn-darkgrid")
         
         self.master = tk.Toplevel()
