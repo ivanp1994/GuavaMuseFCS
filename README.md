@@ -111,17 +111,23 @@ Clicking on **Finalize** destroys the window. Now, user has to input X and Y val
 
 Clicking on **Load** destroys the window. Now, user has to manually set a threshold for Y value. This threshold will apply to all biounits (see [Naming Scheme section](#naming)).
 
-The top row of buttons changes the Biounit, the bottom row of buttons changes the Input Fraction displayed. Clicking on the graph sets a horizontal line and updates the graph to show what cell concentration is after placement. The bottom most row consists of a table in which the user can track the average number of cells per microliter, and the average Y value threshold. After setting thresholds, and double checking, all user has to do is exit the *Debris Exclusion* window.
+The top row of buttons changes the Biounit, the bottom row of buttons changes the Input Fraction displayed. Clicking on the graph sets a horizontal line and updates the graph to show what cell concentration is after placement. The bottom most row consists of a table in which the user can track the average number of cells per microliter, and the average Y value threshold. Additionally, one can use the Tab key to move the graphs along.
+
+After setting thresholds, and double checking, all user has to do is exit the *Debris Exclusion* window.
 
 Before setting threshold:
 
-![debirs_excl1](https://user-images.githubusercontent.com/84333373/132226942-41dc5dcd-6bf4-4fdc-a66c-3dfee91bbfc6.PNG)
+![debr_exc_new1](https://user-images.githubusercontent.com/84333373/132536485-6296880c-dc08-4eb4-909a-535342f00258.PNG)
 
 After setting threshold:
 
-![debirs_excl2](https://user-images.githubusercontent.com/84333373/132226946-24344fc3-c116-41f2-a128-67d78119e5d0.PNG)
+![debr_exc_new2](https://user-images.githubusercontent.com/84333373/132536488-18b14325-51b2-41ec-9355-922dfa088480.PNG)
 
-After exiting the window, the original window is now update to remind the user that debris has been excluded from this *Merged Data* structure.
+Now, all user has to do is exit the window, and a prompt will appear :
+
+![debr_exc_new3](https://user-images.githubusercontent.com/84333373/132536489-452534cc-5604-4b12-a54c-0174adfb41a2.PNG)
+
+In the prompt, user is reminded how much data they are removing. Pressing Yes removes all the debris. Pressing No aborts the entire procedure of debris removal. Pressing Cancel let's user continue tweaking debris exclusion.
 
 ![debris intro_after](https://user-images.githubusercontent.com/84333373/132226948-e3847e1a-85ae-4617-bd9b-99d43030e80f.PNG)
 
@@ -129,7 +135,7 @@ With our debris removed, we can revisit our [enrichment](#enrich) procedure :
 
 ![ned result 2](https://user-images.githubusercontent.com/84333373/132232666-55bed614-82dc-4be0-b47e-dea9c65d0665.PNG)
 
-There's a slight, but not insignificant improvement to our enrichment, but no to our depletion. 
+There's a slight, but not insignificant improvement to our enrichment, but not to our depletion. 
 
 
 
