@@ -95,7 +95,7 @@ class RealDebrisTopLevel():
         curr_biounit = self.biounitVar.get()
         if self.curr_active != None:
             self.curr_active.grid_forget()
-    
+
         self.curr_active = self.biounit_replicate_dic[curr_biounit]
         self.curr_active.grid(row=1, column=0, sticky="nw")
 
@@ -131,6 +131,33 @@ class RealDebrisTopLevel():
         # print(_biounit_th)
         return(_biounit_th, _biounit_num)
 
+    def select_next(self, event):
+        """Selects the next replicate
+        OR if there is no replicate, selects the next biounit"""
+
+        curr_biounit = self.biounitVar.get()
+        curr_replicate = self.replicateVar.get()
+
+        replicate_list = self._biounit_replicate_dic[curr_biounit]
+        index_of_current = replicate_list.index(curr_replicate)
+        try:
+            next_replicate = replicate_list[index_of_current+1]
+            self.replicateVar.set(next_replicate)
+        except IndexError:
+            # if there is no next in replicates
+            # select the next from biounits
+            index_of_current = self.biounits.index(curr_biounit)
+            try:
+                next_biounit = self.biounits[index_of_current+1]
+            except IndexError:
+                # if there is no next biounit, circle back to the first one
+                next_biounit = self.biounits[0]
+            default_replicate = self._biounit_replicate_dic[curr_biounit][0]
+            self.replicateVar.set(default_replicate)
+            self.biounitVar.set(next_biounit)
+
+        pass
+
     def __init__(self, data, x="YEL-HLog", y="FSC-HLog"):
         self.master = tk.Toplevel()
         self.data = data
@@ -138,9 +165,11 @@ class RealDebrisTopLevel():
         self.replicateVar = tk.StringVar()
         self.curr_active = None
         self.curr_graph = None
-        self.biounit_replicate_dic = {}
+        self._biounit_replicate_dic = {}  # <-for values
+        self.biounit_replicate_dic = {}  # <-for a structure
         self.replicate_graph_dic = {}
         self.biounit_graph_dic = {}
+
         self.biounits = list(dict.fromkeys(data.Biounit))
 
         self.master.title("Debris Exclusion")
@@ -153,10 +182,13 @@ class RealDebrisTopLevel():
         for item in biounits:
             s = self.data.loc[self.data.Biounit == item]
             replicates = list(dict.fromkeys(s.Replicate))
+
+            self._biounit_replicate_dic[item] = replicates
             bt = tk.Radiobutton(master=biounit_frame, indicatoron=0, width=20,
                                 value=item, text=item, variable=self.biounitVar)
             bt.grid(row=0, column=i, sticky="nw")
             i = i+1
+
             self.biounit_replicate_dic[item] = tk.Frame(master=self.master)
             curr_frame = self.biounit_replicate_dic[item]
             j = 0
@@ -193,7 +225,9 @@ class RealDebrisTopLevel():
         # create current active for tracking purpose
         self.curr_active = first_frame  # ->Current frame for Replicate buttons
         self.curr_graph = current_graph_fr
-        
+
+        # I want right-click to change graph/biounit
+        self.master.bind("<Tab>", self.select_next)
 
         # I need an information segment
         # [Biounit] [...] [...] [...] ...
@@ -207,14 +241,14 @@ class RealDebrisTopLevel():
             average = round(np.average(cells))
             _biounit_cell[biounit] = average
         """
-        infoseg=DebrisInformationSegment(self.master, self.biounits, self.get_info)
-        
+        infoseg = DebrisInformationSegment(
+            self.master, self.biounits, self.get_info)
+
         # Connect changes to figure to changes in updatating DebrisInformationSegment
-        input_frames=list(self.replicate_graph_dic.values())
-        figures=[item.figure for item in input_frames]
+        input_frames = list(self.replicate_graph_dic.values())
+        figures = [item.figure for item in input_frames]
         control_list = [figure.canvas.callbacks.connect(
             "button_press_event", infoseg.update) for figure in figures]
-        
 
 
 class DebrisInformationSegment():
@@ -237,7 +271,7 @@ class DebrisInformationSegment():
             master=self.frame, text="Update", command=self.update)
         #update_bt.grid(row=0, column=0, rowspan=3, sticky="nsew",)
 
-    def update(self,*args):
+    def update(self, *args):
 
         # Block for destroying
         for item in self.labels:
@@ -351,22 +385,40 @@ class DebrisDataManager():
             return()
         self.input_data = self.data.loc[self.data.Replicate.isin(self.inputs)]
         self.debris_info = RealDebrisTopLevel(self.input_data)
-        self.debris_info.master.protocol("WM_DELETE_WINDOW", self.end_debri)
-        
+        self.debris_info.master.protocol(
+            "WM_DELETE_WINDOW", self.prompt_to_end)
+        #self.debris_info.master.protocol("WM_DELETE_WINDOW", self.end_debri)
 
-    def end_debri(self):
-
+    def prompt_to_end(self):
         t, n = self.debris_info.get_info()
-        self.debris_info.master.destroy()
         biounits = list(t.keys())
         lis = []
         for biounit in biounits:
             s = self.data.loc[self.data.Biounit == biounit]
             ss = s.loc[s[self.y] > t[biounit]]
             lis.append(ss)
-        self.selected_data = pd.concat(lis)
-        self.selected_data.reset_index(inplace=True, drop=True)
-        tk.Label(master=self.master, text="Debris Removed").pack()
+        selected_data = pd.concat(lis)
+        selected_data.reset_index(inplace=True, drop=True)
+
+        per_removed = 100 - len(selected_data)/len(self.data)*100
+
+        box = tk.messagebox.askyesnocancel(
+            title="Finish removal?", message=f"This will remove approximately {per_removed:.2f} % of data. \n Proceed? ")
+
+        # if YES -> debris-free data passed as selected data
+        # if NO  -> original data passed as selected data
+        #
+
+        if box == True:
+            self.selected_data = selected_data
+            self.info_label["text"] = "Debris Removed"
+            self.debris_info.master.destroy()
+        elif box == False:
+            self.selected_data = self.data
+            self.info_label["text"] = "Debris Not Removed"
+            self.debris_info.master.destroy()
+        else:
+            self.info_label["text"] = ""
 
     def __init__(self, data):
 
@@ -381,6 +433,7 @@ class DebrisDataManager():
         self.input_selector = None
         self.xy_selector = None
         self.master.title("Debris Data Manager")
+        self.info_label = tk.Label(master=self.master, text="")
 
         create_bunit_frac(self.data)
         tk.Button(master=self.master, text="Select Input", command=self.start_input_selection).pack(
@@ -389,4 +442,4 @@ class DebrisDataManager():
             anchor="nw", expand=True, fill="both")
         tk.Button(master=self.master, text="Exclude Debris", command=self.start_debris_excl).pack(
             anchor="nw", expand=True, fill="both")
-        
+        self.info_label.pack()
