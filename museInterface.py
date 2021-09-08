@@ -6,8 +6,8 @@
 pylint global evaluation = 10/10
 """
 import tkinter as tk
-import pandas as pd
 from tkinter import filedialog
+import pandas as pd
 
 from .musefcsparser import parse, text_explanation
 from .gating import GUIgating_outline as guigo
@@ -76,6 +76,7 @@ class Backbone():
 # MERGING DATA BLOCK : END
 # ADD & REMOVE DATA BLOCK : BEGINNING
 
+
     def remove_data(self, frame):
         """
         Removes data_set_structure
@@ -121,8 +122,8 @@ class Backbone():
         self.frames.append(data_set)
         # storing the entire frame object
 
-        #this creates a new button that is placed in the frame of a given dataset
-        #with enough leeway for new buttons
+        # this creates a new button that is placed in the frame of a given dataset
+        # with enough leeway for new buttons
         # the button destroys the dataset completely
         delete_object = tk.Button(
             master=data_set.frame, text="Remove data", command=lambda: self.remove_data(data_set))
@@ -133,6 +134,7 @@ class Backbone():
 
 
 #####
+
 
     def start(self):
         """Starts the GUI"""
@@ -192,6 +194,7 @@ class Backbone():
         tk.Button(master=button_frame, text="Draw Menu", bg="gainsboro",
                   command=lambda: DrawTopLevel(self.main,
                                                self.merged_data.data)).grid(row=0, column=3)
+
 
 class DSS():
     """
@@ -289,6 +292,7 @@ class DSS():
                                command=self.export_data)
         export_but.grid(row=0, column=3)
 
+
 class MDSS():
     """
     Creates a merged_data_set structure that consists of all data frame loaded
@@ -357,22 +361,27 @@ class MDSS():
         enrichment_but = tk.Button(
             master=frame, text="ENRICHMENT", command=lambda: XYSelectorTopLevel(self.data))
         enrichment_but.grid(row=0, column=6)
-        
-        debrisexc_but=tk.Button(master=frame, text="Remove Debris",command=self.debris_removal)
-        debrisexc_but.grid(row=0,column=7)
+
+        debrisexc_but = tk.Button(
+            master=frame, text="Remove Debris", command=self.debris_removal)
+        debrisexc_but.grid(row=0, column=7)
         # stores this frame in mainclass.frames list for better removal
         mainclass.frames.append(self)
-    
+
     def debris_removal(self):
-        self.debris_top=DebrisDataManager(self.data)
-        self.debris_top.master.protocol("WM_DELETE_WINDOW",self.debris_removal_end)
-        
+        """Starts debris removal procedure"""
+        self.debris_top = DebrisDataManager(self.data)
+        self.debris_top.master.protocol(
+            "WM_DELETE_WINDOW", self.debris_removal_end)
+
     def debris_removal_end(self):
+        """Ends debris removal procedure"""
         print("Debris removal ended")
-        
-        self.data=self.debris_top.selected_data
-        
+
+        self.data = self.debris_top.selected_data
+
         self.debris_top.master.destroy()
+
     def export_data(self):
         """
         Exports the dataframe to a given directory

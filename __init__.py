@@ -4,7 +4,6 @@ Created on Tue May 25 10:25:42 2021
 
 @author: Ivan Pokrovac
 
-datastructs.py      -  pylint global evaluation = 10/10
 dfdraw_settings.py  -  pylint global evaluation = 9.85/10
 dfdrawer.py         -  pylint global evaluation = 9.68/10
 gating.py           -  pylint global evaluation = 9.83/10
