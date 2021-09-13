@@ -14,39 +14,394 @@ from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import tkinter as tk
+from tkinter import filedialog
 
 from .supplemental import get_numerical, ModifiedOptionMenu
 from .gui_enrichment import create_bunit_frac
+from .musefcsparser import parse
 
 
-# USED
+# %% Manager - _BiounitDebrisDataStructure and DebrisDataManager
+
+class _BiounitDebrisDataStructure():
+    def __init__(self, master, Biounit, data):
+        self.biounit = Biounit
+
+        self.biounit_label = tk.Label(
+            master=master, text=f"{Biounit=}", relief="ridge", bg="gainsboro")
+        self.internal_bt = tk.Button(
+            master=master, text="From internal", command=self.from_internal)
+        self.external_bt = tk.Button(
+            master=master, text="From external", command=self.from_external)
+        self.info_label = tk.Label(
+            master=master, text="", relief="ridge", bg="gainsboro")
+        self.threshold_label = tk.Label(
+            master=master, text="", relief="ridge", bg="gainsboro")
+
+        self.data = data.loc[data.Biounit == Biounit]
+        self.replicates = sorted(list(set(self.data.Replicate)))
+
+        self.selection = None
+
+    def place(self, row_pos):
+        self.biounit_label.grid(row=row_pos, column=0, sticky="nsew")
+        self.internal_bt.grid(row=row_pos, column=1, sticky="nsew")
+        self.external_bt.grid(row=row_pos, column=2, sticky="nsew")
+        self.info_label.grid(row=row_pos, column=3, sticky="nsew")
+        self.threshold_label.grid(row=row_pos, column=4, sticky="nsew")
+
+    def from_internal(self):
+        """Select debris-graph by replicates within structure"""
+        internal_prompt = tk.Toplevel()
+        listbox = tk.Listbox(selectmode="multiple", master=internal_prompt)
+        for i in range(len(self.replicates)):
+            listbox.insert(i, self.replicates[i])
+        listbox.pack()
+
+        def finalize_internal(listbox, internal_prompt, structure):
+            """Short small function to finalize internal selection"""
+            indices = listbox.curselection()
+            selection = [listbox.get(i) for i in indices]
+            internal_prompt.destroy()
+            if len(indices) == 0:
+                return()
+            structure.selection = selection
+            structure.info_label["text"] = structure.selection
+
+        internal_prompt.protocol("WM_DELETE_WINDOW", lambda: finalize_internal(
+            listbox=listbox, internal_prompt=internal_prompt, structure=self))
+
+    def from_external(self):
+        """Provide external debris_path"""
+        path = filedialog.askopenfilename(filetypes=(
+            ("fcs files", "*.fcs"), ("FCS files", "*.FCS"), ("All files", "*.*")))
+        if len(path) == 0:
+            return()
+
+        self.selection = path
+        # display the short version of the path
+        elements = path.split("/")
+        while len(elements[-1]) == 0:
+            elements.pop()
+        short_version = elements[-1]
+        self.info_label["text"] = short_version
 
 
-class InputReplicateFrame():
-    def hide(self):
-        self.frame.grid_forget()
+class DebrisDataManager():
 
-    def place(self, r=1, c=0):
-        self.frame.grid(row=r, column=c)
+    def __init__(self, data):
 
-    def click_coordinate(self, event):
-        y_coord = event.ydata
-        self.cellsizethreshold = y_coord
-        self.line.set_ydata(y_coord)
-        data = self.data
-        y = self.y
-        series = data[y]
-        above = np.count_nonzero(series > y_coord)
-        percentage = above/len(series)
-        self.percentage_selected = percentage
+        self.data = data.copy()
+        self.selected_data = None  # <-data after debris is removed
+        self.biounits = None
+        self.x = None
+        self.y = None
+        # <- {biounit:biounitstruc} where {biounit=Str} and {biounitstruc=_BiounitDebrisDataStructure}
+        self.biounit_biounitstruc_dic = {}
+        # <- {biounit:debrisdata} where {biounit=Str} and {debrisdata=pd.DataFrame}
+        self.biounit_debrisdataset_dic = {}
+        self.listbox = None  # <-in case of internal
+        self.debristoplevel_struct = None  # <- DebrisToplevel object
+        self.end_it_all_button = None  # <- Button that concludes debris removal session
+        self.master = tk.Toplevel()
 
-        display = self.cellnumber*self.percentage_selected
-        display = round(display)
+        if not hasattr(self.data, "Biounit"):
+            try:
+                create_bunit_frac(self.data)
+            except ValueError:
+                _faulty_samples = [item for item in list(
+                    set(data.Sample)) if "-" not in item]
+                raise ValueError(
+                    f'The following samples do not have "-": \n {_faulty_samples}')
+        self.biounits = sorted(list(set(self.data.Biounit)))
 
-        display = str(display)+" Cells per Microliter"
-        self.textbox.set_text(display)
+        xy_options = list(get_numerical(self.data).columns)
+        x_menu = ModifiedOptionMenu(
+            master=self.master, label="X= ", options=xy_options, typevar=None)
+        y_menu = ModifiedOptionMenu(
+            master=self.master, label="Y= ", options=xy_options, typevar=None)
+        self.x = x_menu.variable
+        self.y = y_menu.variable
 
-        self.canvas.draw()
+        # remove from full function
+        self.x.set("YEL-HLog")
+        self.y.set("FSC-HLog")
+
+        x_menu.place(0, 0)
+        y_menu.place(1, 0)
+
+        tk.Label(master=self.master, text="Biounit Label and Command menu",
+                 bg="gainsboro", relief="groove").grid(row=2, column=0, columnspan=3, sticky="nsew")
+        tk.Label(master=self.master, text="Path/Input selection",
+                 bg="gainsboro", relief="groove").grid(row=2, column=3, sticky="nsew")
+        tk.Label(master=self.master, text="Threshold",
+                 bg="gainsboro", relief="groove").grid(row=2, column=4, sticky="nsew")
+        row_pos = 3
+        for biounit in self.biounits:
+            self.biounit_biounitstruc_dic[biounit] = _BiounitDebrisDataStructure(
+                self.master, biounit, self.data)
+            self.biounit_biounitstruc_dic[biounit].place(row_pos)
+            row_pos += 1
+
+        tk.Button(master=self.master, text="Enter Debris Removal Window",
+                  command=self.enter_debris_removal).grid(row=row_pos, column=0, columnspan=3, sticky="nsew")
+        self.end_it_all_button = tk.Button(master=self.master, text="Conclude the Debris Removal Session").grid(
+            row=row_pos, column=3, columnspan=2, sticky="nsew")
+
+    def biounit_threshold_update(self, bt_dic):
+        """updates biounitstructure threshold label"""
+        for biounit in bt_dic.keys():
+            datastructure = self.biounit_biounitstruc_dic[biounit]
+            threshold = bt_dic[biounit]
+            threshold = round(threshold, 3)
+            datastructure.threshold_label["text"] = threshold
+
+    def enter_debris_removal(self):
+        """short function for entering debris removal"""
+        print("entered debris removal")
+        biounit_structure = self.biounit_biounitstruc_dic
+        for biounit in biounit_structure.keys():
+            structure = biounit_structure[biounit]
+            selection = structure.selection
+            # this print right here so I can skip some steps in constructing
+
+            if type(selection) == list:
+                debris_dataset = self.data.loc[self.data.Biounit == biounit]
+                debris_dataset = debris_dataset.loc[debris_dataset.Replicate.isin(
+                    selection)]
+            elif type(selection) == str:
+                debris_dataset = parse(selection)
+            else:
+                raise ValueError(f"Not selected for {biounit}")
+            self.biounit_debrisdataset_dic[biounit] = debris_dataset
+
+        self.debristoplevel_struct = DebrisToplevel(
+            self.biounit_debrisdataset_dic, x=self.x.get(), y=self.y.get())
+        self.debristoplevel_struct.master.protocol(
+            "WM_DELETE_WINDOW", self.prompt_to_end)
+
+    def prompt_to_end(self):
+        """Double checks if everything is done - if YES then initializes selected_data to not be none"""
+
+        print("entered prompt to end")
+        t, n, p = self.debristoplevel_struct.get_info()
+        y_column = self.y.get()
+        biounits = list(t.keys())
+        lis = []
+        for biounit in biounits:
+            s = self.data.loc[self.data.Biounit == biounit]
+            ss = s.loc[s[y_column] > t[biounit]]
+            lis.append(ss)
+        selected_data = pd.concat(lis)
+        selected_data.reset_index(inplace=True, drop=True)
+
+        per_removed = 100 - len(selected_data)/len(self.data)*100
+
+        box = tk.messagebox.askyesnocancel(
+            title="Finish removal?", message=f"This will remove approximately {per_removed:.2f} % of data. \n Proceed? ")
+
+        # if YES -> debris-free data passed as selected data
+        # if NO  -> original data passed as selected data
+
+        if box == True:
+            self.selected_data = selected_data
+            self.debristoplevel_struct.master.destroy()
+            self.biounit_threshold_update(t)
+            #self.info_label["text"] = "Debris Removed"
+
+        elif box == False:
+            self.debristoplevel_struct.master.destroy()
+            #self.info_label["text"] = "Debris Not Removed"
+        else:
+            pass
+
+        def bind_concluding_debris_button(self, func):
+            """func -> the function bound to the button"""
+            pass
+
+
+# %% Toplevel - DebrisToplevel, DebrisToplevel_GraphStruct, DebrisToplevel_InfoStruct
+
+class DebrisToplevel():
+
+    def __init__(self, biounit_debrisdataset_dic, x="YEL-HLog", y="FSC-HLog"):
+
+        self.master = tk.Toplevel()
+
+        self.biounitVar = tk.StringVar()
+        self.replicateVar = tk.StringVar()
+        self.curr_active = None
+        self.curr_graph = None
+
+        # <-{biounit:replicate} where {biounit=Str} and {replicate=Str}
+        self._biounit_replicate_dic = {}
+        # <-{biounit:replicate} where {biounit=Str} amd {replicate=tk.Frame}
+        self.biounit_replicate_dic = {}
+        self.biounitreplicate_graph_dic = {}
+        self.biounit_graph_dic = {}
+
+        self.biounits = list(biounit_debrisdataset_dic.keys())
+
+        self.master.title("Debris Exclusion")
+        biounit_frame = tk.Frame(master=self.master)
+        biounit_frame.grid(row=0, column=0, sticky="nw")
+        biounits = self.biounits
+        plt.style.use("fivethirtyeight")
+
+        i = 0
+        for biounit in biounits:
+            biounit_dataset = biounit_debrisdataset_dic[biounit]
+            # print(biounit)
+            try:
+                replicates = list(dict.fromkeys(biounit_dataset.Replicate))
+            except AttributeError:
+                biounit_dataset["Replicate"] = biounit_dataset.Sample
+                replicates = list(dict.fromkeys(biounit_dataset.Sample))
+            self._biounit_replicate_dic[biounit] = replicates
+
+            bt = tk.Radiobutton(master=biounit_frame, indicatoron=0, width=20,
+                                value=biounit, text=biounit, variable=self.biounitVar)
+            bt.grid(row=0, column=i, sticky="nw")
+            i = i+1
+            self.biounit_replicate_dic[biounit] = tk.Frame(master=self.master)
+            curr_frame = self.biounit_replicate_dic[biounit]
+
+            j = 0
+            graph_list = []  # <-list for storing all graphs belonging to biounit
+            for replicate in replicates:
+
+                bt = tk.Radiobutton(master=curr_frame, indicatoron=0, width=20,
+                                    value=replicate, text=replicate, variable=self.replicateVar)
+                bt.grid(row=0, column=j, sticky="nw")
+
+                one_graph = DebrisToplevel_GraphStruct(
+                    self.master, biounit_dataset, x, y, replicate)
+
+                self.biounitreplicate_graph_dic[biounit+replicate] = one_graph
+                graph_list.append(one_graph)
+                j = j+1
+            self.biounit_graph_dic[biounit] = graph_list
+
+        # initialize tracing
+        self.biounitVar.trace("w", self.change_replicates_buttons)
+        self.replicateVar.trace("w", self.change_graph_shown)
+
+        # initialize first selection - BIOUNIT
+        first_biounit = biounits[0]
+        self.biounitVar.set(first_biounit)
+        first_frame = self.biounit_replicate_dic[first_biounit]
+        first_frame.grid(row=1, column=0, sticky="w")
+
+        # initialize first selection - REPLICATE
+        first_replicates = self._biounit_replicate_dic[first_biounit]
+        first_replicate = first_replicates[0]
+        self.replicateVar.set(first_replicate)
+
+        # Place the graph
+        first_combination = first_biounit+first_replicate
+        current_graph_fr = self.biounitreplicate_graph_dic[first_combination]
+        current_graph_fr.place(r=5, c=0)
+        # create current active for tracking purpose
+        self.curr_active = first_frame  # ->Current frame for Replicate buttons
+        self.curr_graph = current_graph_fr
+
+        # I want right-click to change graph/biounit
+        self.master.bind("<Tab>", self.select_next)
+
+        # I need an information segment
+        # [Biounit] [...] [...] [...] ...
+        # [Cells]   [...] [...] [...] ...
+        # [Threshold] [...] [...] [...] ...
+        """
+        _biounit_cell = {}
+        for biounit in biounits:
+            s = self.data.loc[self.data.Biounit == biounit]
+            cells = np.array(list(dict.fromkeys(s["Cell Number"])))
+            average = round(np.average(cells))
+            _biounit_cell[biounit] = average
+        """
+        infoseg = DebrisToplevel_InfoStruct(
+            self.master, self.biounits, self.get_info)
+
+        # Connect changes to figure to changes in updatating DebrisToplevel_InfoStruct
+        input_frames = list(self.biounitreplicate_graph_dic.values())
+        figures = [item.figure for item in input_frames]
+        control_list = [figure.canvas.callbacks.connect(
+            "button_press_event", infoseg.update) for figure in figures]
+
+    def change_replicates_buttons(self, *args):
+
+        curr_biounit = self.biounitVar.get()
+        if self.curr_active != None:
+            self.curr_active.grid_forget()
+
+        self.curr_active = self.biounit_replicate_dic[curr_biounit]
+        self.curr_active.grid(row=1, column=0, sticky="nw")
+        replicates = self._biounit_replicate_dic[curr_biounit]
+        first = replicates[0]
+        self.replicateVar.set(first)
+
+    def change_graph_shown(self, *args):
+
+        if self.curr_graph != None:
+            self.curr_graph.hide()
+        combination = self.biounitVar.get()+self.replicateVar.get()
+        replicate_graph = self.biounitreplicate_graph_dic[combination]
+        replicate_graph.place(r=5, c=0,)
+        self.curr_graph = replicate_graph
+
+    def get_info(self):
+
+        _biounit_th = {}
+        _biounit_num = {}
+        _biounit_per = {}
+
+        for biounit in self.biounits:
+            graphs = self.biounit_graph_dic[biounit]
+            cell_th = [graph.cellsizethreshold for graph in graphs]
+            cell_num = [graph.cellnumber *
+                        graph.percentage_selected for graph in graphs]
+            perc_selec = [graph.percentage_selected*100 for graph in graphs]
+            av_th = np.average(cell_th)
+            av_num = np.average(cell_num)
+            av_perc = np.average(perc_selec)
+            # print(f"{biounit=},{av_th=}")
+
+            _biounit_th[biounit] = round(av_th, 4)
+            _biounit_num[biounit] = round(av_num)
+            _biounit_per[biounit] = round(av_perc, 2)
+        # print(_biounit_num)
+        # print(_biounit_th)
+        # print(f"{_biounit_th=},{_biounit_num=},{_biounit_per=}")
+        return(_biounit_th, _biounit_num, _biounit_per)
+
+    def select_next(self, event):
+        """Selects the next replicate
+        OR if there is no replicate, selects the next biounit"""
+
+        curr_biounit = self.biounitVar.get()
+        curr_replicate = self.replicateVar.get()
+
+        replicate_list = self._biounit_replicate_dic[curr_biounit]
+        index_of_current = replicate_list.index(curr_replicate)
+        try:
+            next_replicate = replicate_list[index_of_current+1]
+            self.replicateVar.set(next_replicate)
+        except IndexError:
+            # if there is no next in replicates
+            # select the next from biounits
+            index_of_current = self.biounits.index(curr_biounit)
+            try:
+                next_biounit = self.biounits[index_of_current+1]
+            except IndexError:
+                # if there is no next biounit, circle back to the first one
+                next_biounit = self.biounits[0]
+            default_replicate = self._biounit_replicate_dic[curr_biounit][0]
+            self.replicateVar.set(default_replicate)
+            self.biounitVar.set(next_biounit)
+
+
+class DebrisToplevel_GraphStruct():
 
     def __init__(self, master, data, x, y, replicate):
         self.frame = tk.Frame(master=master)
@@ -88,170 +443,37 @@ class InputReplicateFrame():
         f = self.figure.canvas.callbacks.connect(
             'button_press_event', self.click_coordinate)
 
+    def hide(self):
+        self.frame.grid_forget()
 
-class RealDebrisTopLevel():
+    def place(self, r=1, c=0):
+        self.frame.grid(row=r, column=c)
 
-    def change_replicates_buttons(self, *args):
-        curr_biounit = self.biounitVar.get()
-        if self.curr_active != None:
-            self.curr_active.grid_forget()
+    def click_coordinate(self, event):
+        if event.inaxes is None:
+            return()
+        y_coord = event.ydata
 
-        self.curr_active = self.biounit_replicate_dic[curr_biounit]
-        self.curr_active.grid(row=1, column=0, sticky="nw")
+        self.cellsizethreshold = y_coord
+        self.line.set_ydata(y_coord)
+        data = self.data
+        y = self.y
+        series = data[y]
+        above = np.count_nonzero(series > y_coord)
+        percentage = above/len(series)
+        self.percentage_selected = percentage
 
-        s = self.data.loc[self.data.Biounit == curr_biounit]
-        replicates = list(dict.fromkeys(s.Replicate))
-        first = replicates[0]
+        display = self.cellnumber*self.percentage_selected
+        display = round(display)
 
-        self.replicateVar.set(first)
+        display = str(display)+" Cells per Microliter"
+        self.textbox.set_text(display)
 
-    def change_graph_shown(self, *args):
-        if self.curr_graph != None:
-            self.curr_graph.hide()
-        replicate_graph = self.replicate_graph_dic[self.replicateVar.get()]
-        replicate_graph.place(r=5, c=0,)
-        self.curr_graph = replicate_graph
-
-    def get_info(self):
-
-        _biounit_th = {}
-        _biounit_num = {}
-
-        for biounit in self.biounits:
-            graphs = self.biounit_graph_dic[biounit]
-            cell_th = [graph.cellsizethreshold for graph in graphs]
-            cell_num = [graph.cellnumber *
-                        graph.percentage_selected for graph in graphs]
-            av_th = np.average(cell_th)
-            av_num = np.average(cell_num)
-
-            _biounit_th[biounit] = round(av_th, 4)
-            _biounit_num[biounit] = round(av_num)
-        # print(_biounit_num)
-        # print(_biounit_th)
-        return(_biounit_th, _biounit_num)
-
-    def select_next(self, event):
-        """Selects the next replicate
-        OR if there is no replicate, selects the next biounit"""
-
-        curr_biounit = self.biounitVar.get()
-        curr_replicate = self.replicateVar.get()
-
-        replicate_list = self._biounit_replicate_dic[curr_biounit]
-        index_of_current = replicate_list.index(curr_replicate)
-        try:
-            next_replicate = replicate_list[index_of_current+1]
-            self.replicateVar.set(next_replicate)
-        except IndexError:
-            # if there is no next in replicates
-            # select the next from biounits
-            index_of_current = self.biounits.index(curr_biounit)
-            try:
-                next_biounit = self.biounits[index_of_current+1]
-            except IndexError:
-                # if there is no next biounit, circle back to the first one
-                next_biounit = self.biounits[0]
-            default_replicate = self._biounit_replicate_dic[curr_biounit][0]
-            self.replicateVar.set(default_replicate)
-            self.biounitVar.set(next_biounit)
-
-        pass
-
-    def __init__(self, data, x="YEL-HLog", y="FSC-HLog"):
-        self.master = tk.Toplevel()
-        self.data = data
-        self.biounitVar = tk.StringVar()
-        self.replicateVar = tk.StringVar()
-        self.curr_active = None
-        self.curr_graph = None
-        self._biounit_replicate_dic = {}  # <-for values
-        self.biounit_replicate_dic = {}  # <-for a structure
-        self.replicate_graph_dic = {}
-        self.biounit_graph_dic = {}
-
-        self.biounits = list(dict.fromkeys(data.Biounit))
-
-        self.master.title("Debris Exclusion")
-        biounit_frame = tk.Frame(master=self.master)
-        biounit_frame.grid(row=0, column=0, sticky="nw")
-        biounits = self.biounits
-        plt.style.use("fivethirtyeight")
-
-        i = 0
-        for item in biounits:
-            s = self.data.loc[self.data.Biounit == item]
-            replicates = list(dict.fromkeys(s.Replicate))
-
-            self._biounit_replicate_dic[item] = replicates
-            bt = tk.Radiobutton(master=biounit_frame, indicatoron=0, width=20,
-                                value=item, text=item, variable=self.biounitVar)
-            bt.grid(row=0, column=i, sticky="nw")
-            i = i+1
-
-            self.biounit_replicate_dic[item] = tk.Frame(master=self.master)
-            curr_frame = self.biounit_replicate_dic[item]
-            j = 0
-            supp = []
-            for item2 in replicates:
-
-                bt = tk.Radiobutton(master=curr_frame, indicatoron=0, width=20,
-                                    value=item2, text=item2, variable=self.replicateVar)
-                bt.grid(row=0, column=j, sticky="nw")
-
-                one_graph = InputReplicateFrame(self.master, s, x, y, item2)
-                self.replicate_graph_dic[item2] = one_graph
-                supp.append(one_graph)
-                j = j+1
-            self.biounit_graph_dic[item] = supp
-
-        # initialize tracing
-        self.biounitVar.trace("w", self.change_replicates_buttons)
-        self.replicateVar.trace("w", self.change_graph_shown)
-
-        # initialize first selection - BIOUNIT
-        self.biounitVar.set(biounits[0])
-        first_frame = self.biounit_replicate_dic[biounits[0]]
-        first_frame.grid(row=1, column=0, sticky="w")
-        # initialize first selection - REPLICATE
-        s = self.data.loc[self.data.Biounit == biounits[0]]
-        replicates = list(dict.fromkeys(s.Replicate))
-        first = replicates[0]
-        self.replicateVar.set(first)
-
-        # Place the graph
-        current_graph_fr = self.replicate_graph_dic[first]
-        current_graph_fr.place(r=5, c=0)
-        # create current active for tracking purpose
-        self.curr_active = first_frame  # ->Current frame for Replicate buttons
-        self.curr_graph = current_graph_fr
-
-        # I want right-click to change graph/biounit
-        self.master.bind("<Tab>", self.select_next)
-
-        # I need an information segment
-        # [Biounit] [...] [...] [...] ...
-        # [Cells]   [...] [...] [...] ...
-        # [Threshold] [...] [...] [...] ...
-        """
-        _biounit_cell = {}
-        for biounit in biounits:
-            s = self.data.loc[self.data.Biounit == biounit]
-            cells = np.array(list(dict.fromkeys(s["Cell Number"])))
-            average = round(np.average(cells))
-            _biounit_cell[biounit] = average
-        """
-        infoseg = DebrisInformationSegment(
-            self.master, self.biounits, self.get_info)
-
-        # Connect changes to figure to changes in updatating DebrisInformationSegment
-        input_frames = list(self.replicate_graph_dic.values())
-        figures = [item.figure for item in input_frames]
-        control_list = [figure.canvas.callbacks.connect(
-            "button_press_event", infoseg.update) for figure in figures]
+        self.canvas.draw()
 
 
-class DebrisInformationSegment():
+class DebrisToplevel_InfoStruct():
+
     def __init__(self, master, biounits, update_function):
         self.frame = tk.Frame(master=master)
         self.labels = []
@@ -265,6 +487,8 @@ class DebrisInformationSegment():
                  bg="gainsboro").grid(row=1, column=1, sticky="we")
         tk.Label(master=self.frame, text="Threshold", relief="raised",
                  bg="gainsboro").grid(row=2, column=1, sticky="we")
+        tk.Label(master=self.frame, text="Percentage Remaining", relief="raised",
+                 bg="gainsboro").grid(row=3, column=1, sticky="we")
 
         self.update()
         update_bt = tk.Button(
@@ -278,7 +502,7 @@ class DebrisInformationSegment():
             item.destroy()
         self.labels = []
 
-        _biounit_threshold, _biounit_cell, = self.retrieving_info()
+        _biounit_threshold, _biounit_cell, _biounit_per = self.retrieving_info()
 
         # Block for updating
         for i in range(len(self.biounits)):
@@ -292,154 +516,11 @@ class DebrisInformationSegment():
 
             c = tk.Label(master=self.frame, text=_biounit_threshold[biounit], relief="raised",
                          width=10)
+            d = tk.Label(master=self.frame,
+                         text=_biounit_per[biounit], relief="raised", width=10)
 
             a.grid(row=0, column=pos, sticky="we")
             b.grid(row=1, column=pos, sticky="we")
             c.grid(row=2, column=pos, sticky="we")
-            self.labels += [a, b, c]
-
-
-class InputSelector():
-
-    def finalize(self, *args):
-        indices = self.listbox.curselection()
-        selected = [self.listbox.get(i) for i in indices]
-        print(selected)
-        selected_data = self.data.loc[self.data["Replicate"].isin(selected)]
-        XYSelectorTopLevel(selected_data)
-        self.master.destroy()
-
-    def bind_finalization(self, func):
-        self.finalize_bt.bind("<Button-1>", func)
-
-    def __init__(self, data):
-        self.master = tk.Toplevel()
-        self.master.title("Selecting inputs")
-        self.data = data
-        # self.master.geometry("100x300")
-        samples = list(dict.fromkeys(data.Replicate))
-        samples.sort()
-        self.listbox = tk.Listbox(selectmode="multiple", master=self.master)
-        for i in range(len(samples)):
-            self.listbox.insert(i, samples[i])
-        self.listbox.grid(row=1, column=0, sticky="nsew")
-        tk.Label(master=self.master, text="Select").grid(
-            row=0, column=0, sticky="nsew")
-        self.finalize_bt = tk.Button(master=self.master, text="FINALIZE")
-        self.finalize_bt.grid(row=2, column=0, sticky="nsew")
-
-
-class XYSelectorTopLevel():
-    """Tkinter toplevel here just to select X and Y variable"""
-
-    def bind_finalization(self, func):
-        self.finalize_bt.bind("<Button-1>", func)
-
-    def __init__(self, data):
-        """Initializes the selector"""
-        master = tk.Toplevel()
-        self.master = master
-        self.master.title("X & Y")
-        self.data = data
-        num = get_numerical(data)
-        columns = list(num.columns)
-        x = ModifiedOptionMenu(self.master, "X=", columns, None)
-        x.place(0, 0)
-        self.x = x.variable
-        y = ModifiedOptionMenu(self.master, "Y=", columns, None)
-        y.place(1, 0)
-        self.y = y.variable
-        self.finalize_bt = tk.Button(master=self.master, text="LOAD",)
-        self.finalize_bt.grid(row=0, column=2, rowspan=2, sticky="nsew")
-##
-
-
-class DebrisDataManager():
-
-    def finalize_inputselector(self, *args):
-        inputselector = self.input_selector
-        indices = inputselector.listbox.curselection()
-        self.inputs = [inputselector.listbox.get(i) for i in indices]
-        inputselector.master.destroy()
-        print(self.inputs)
-
-    def finalize_xyselector(self, *args):
-        xy_selector = self.xy_selector
-        self.x = xy_selector.x.get()
-        self.y = xy_selector.y.get()
-        xy_selector.master.destroy()
-        print(self.x, self.y)
-
-    def start_input_selection(self):
-        data = self.data
-        self.input_selector = InputSelector(data)
-        self.input_selector.bind_finalization(self.finalize_inputselector)
-
-    def start_xy_selection(self):
-        data = self.data
-        self.xy_selector = XYSelectorTopLevel(data)
-        self.xy_selector.bind_finalization(self.finalize_xyselector)
-
-    def start_debris_excl(self):
-        if len(self.inputs) == 0:
-            return()
-        self.input_data = self.data.loc[self.data.Replicate.isin(self.inputs)]
-        self.debris_info = RealDebrisTopLevel(self.input_data)
-        self.debris_info.master.protocol(
-            "WM_DELETE_WINDOW", self.prompt_to_end)
-        #self.debris_info.master.protocol("WM_DELETE_WINDOW", self.end_debri)
-
-    def prompt_to_end(self):
-        t, n = self.debris_info.get_info()
-        biounits = list(t.keys())
-        lis = []
-        for biounit in biounits:
-            s = self.data.loc[self.data.Biounit == biounit]
-            ss = s.loc[s[self.y] > t[biounit]]
-            lis.append(ss)
-        selected_data = pd.concat(lis)
-        selected_data.reset_index(inplace=True, drop=True)
-
-        per_removed = 100 - len(selected_data)/len(self.data)*100
-
-        box = tk.messagebox.askyesnocancel(
-            title="Finish removal?", message=f"This will remove approximately {per_removed:.2f} % of data. \n Proceed? ")
-
-        # if YES -> debris-free data passed as selected data
-        # if NO  -> original data passed as selected data
-        #
-
-        if box == True:
-            self.selected_data = selected_data
-            self.info_label["text"] = "Debris Removed"
-            self.debris_info.master.destroy()
-        elif box == False:
-            self.selected_data = self.data
-            self.info_label["text"] = "Debris Not Removed"
-            self.debris_info.master.destroy()
-        else:
-            self.info_label["text"] = ""
-
-    def __init__(self, data):
-
-        self.master = tk.Toplevel()
-        self.data = data
-        self.inputs = []
-        self.input_data = None
-        self.selected_data = None
-        self.x = None
-        self.y = None
-        self.debris_info = None
-        self.input_selector = None
-        self.xy_selector = None
-        self.master.title("Debris Data Manager")
-        self.info_label = tk.Label(master=self.master, text="")
-
-        create_bunit_frac(self.data)
-        tk.Button(master=self.master, text="Select Input", command=self.start_input_selection).pack(
-            anchor="nw", expand=True, fill="both")
-        tk.Button(master=self.master, text="Select X&Y", command=self.start_xy_selection).pack(
-            anchor="nw", expand=True, fill="both")
-        tk.Button(master=self.master, text="Exclude Debris", command=self.start_debris_excl).pack(
-            anchor="nw", expand=True, fill="both")
-        self.info_label.pack()
+            d.grid(row=3, column=pos, sticky="we")
+            self.labels += [a, b, c, d]
