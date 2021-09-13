@@ -104,7 +104,7 @@ class DebrisDataManager():
         self.debristoplevel_struct = None  # <- DebrisToplevel object
         self.end_it_all_button = None  # <- Button that concludes debris removal session
         self.master = tk.Toplevel()
-
+        self.master.title("Debris Removal Manager")
         if not hasattr(self.data, "Biounit"):
             try:
                 create_bunit_frac(self.data)
