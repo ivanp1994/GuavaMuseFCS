@@ -6,7 +6,9 @@
 # pylint: disable=W0613
 """
 Created on Tue Aug 31 12:32:18 2021
+Added initial t setting as percentile of X column of INP Fraction
 
+Added redundancy when data doesnt have Biounit or Fraction column
 @author: ivanp
 """
 
@@ -20,11 +22,13 @@ import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from sklearn.utils import resample
+from sklearn.mixture import GaussianMixture as GMM
 from pandastable import Table
 from .supplemental import get_numerical, ModifiedOptionMenu
-
+import scipy.stats as stats
 
 # %%FUNCTIONS
+
 
 def create_bunit_frac(df):
     """
@@ -41,7 +45,9 @@ def create_bunit_frac(df):
 
     """
     samples = list(dict.fromkeys(df["Sample"]))
-
+    for item in samples:
+        if "-" not in item:
+            raise ValueError(f'Sample {item} is does not have "-" in it')
     biounits = [item[item.find("-")+1:] for item in samples]
     fractions = [item[:item.find("-")] for item in samples]
 
@@ -99,7 +105,7 @@ def replicate_measurement(data, x, bt_dictionary) -> dict:
     return(biounit_fraction)
 
 
-def bootstrap_measurement(data, x, bt_dictionary, n_iters=50, per_sample=0.40):
+def bootstrap_measurement(data, x, bt_dictionary, n_iters=500, per_sample=0.40):
     """
     Bootstraps (resamples) {per_sample} from a given fraction of a given biounit {n_iters} times to return measurement
 
@@ -229,6 +235,63 @@ def NED_calculation(provided_dictionary) -> pd.DataFrame:
 
     return(final_result)
 
+
+def get_appropriate_array(data, t, x):
+    """GMM doesnt play nice for pandas series"""
+    data = data.loc[data[x] > t]
+    pandas_series = np.array(data.loc[data.Fraction == "S"][x])
+    numpy_array = pandas_series.reshape(-1, 1)
+    return(numpy_array)
+
+
+def threshold_gainer(data, x, tolerance=0.001):
+    """
+    Write a big docu here, I'll forget
+    Selecting only S fraction, and do a GMM
+    Truncate ~3 stdevs until convergence
+        this means that mean-3stdev is selected as threshold
+        and everything below that threshold is removed
+        and then do another GMM fitting
+    Repeat until there is convergence:
+        convergence is defined when ratio of old threshold and new threshold is
+        within 1+- tolerance
+
+    Returns a threshold
+    Anything above that is considered to be potential sgonia
+
+    Parameters
+    ----------
+    data : pandas dataframe.
+    tolerance : TYPE, optional
+        DESCRIPTION. The default is 0.001.
+    x : column in data. The default is "YEL-HLog".
+
+    Returns
+    -------
+    None.
+
+    """
+
+    def gaussian_mixture_workflow(data, t, x):
+        """short function for getting univar KDE params"""
+        gm = GMM(1)
+        chi_array = get_appropriate_array(data, t, x)
+        gm.fit(chi_array)
+        mean = float(gm.means_)
+        stdev = float(gm.covariances_)**0.5
+        threshold = mean-2.5*stdev
+        return(threshold)
+
+    old_t = gaussian_mixture_workflow(data, 0, x)
+    while True:
+        new_t = gaussian_mixture_workflow(data, old_t, x)
+        ratio = new_t/old_t
+        if ratio < 1 + tolerance and ratio > 1 - tolerance:
+            break
+        old_t = new_t
+    return(new_t)
+
+
 # %% END OF FUNCTIONs
 
 
@@ -244,10 +307,11 @@ class BiounitsFrame():
         self.data = data.copy()
         self.biounits = []
         self.biounit_fractionframe_dic = {}
+        self.biounit_kdesgoniaframe_dic = {}
         self.biounit_selected = tk.StringVar()
         self.fraction_selected = tk.StringVar()
         self.canvas_frame = None
-
+        self.kde_sgonia_frame = None
         #  Block to extract information about Biounit and Fractions
         if not hasattr(data, "Biounit"):
             create_bunit_frac(self.data)
@@ -264,6 +328,11 @@ class BiounitsFrame():
         self.canvas_frame = canvas_frame
         canvas_frame.pack()
 
+        # <-Holding normalized S gonia frame (to be added)
+        kde_sgonia_frame = tk.Frame(master)
+        self.kde_sgonia_frame = kde_sgonia_frame
+        kde_sgonia_frame.pack()
+
         #  Radiobuttons for both variables / Creation of FractionsFrame structure
         for biounit in self.biounits:
             fractions = self.data.loc[self.data.Biounit == biounit]["Fraction"]
@@ -272,6 +341,13 @@ class BiounitsFrame():
             if len(fractions) != 4:
                 self.biounits.remove(biounit)
                 continue
+
+            # finding the initial threshold as 99th percentile of X column in INP Fraction
+            biounit_data = self.data.loc[self.data.Biounit == biounit]
+            input_data = biounit_data.loc[data.Fraction == "INP"]
+            input_series = input_data[x]
+            initial_t = np.percentile(input_series, 99)
+
             # create radiobuttons to control Biounit
             rb = tk.Radiobutton(master=bt_biounit_frame, indicatoron=0, width=20,
                                 value=biounit, text=biounit, variable=self.biounit_selected)
@@ -281,9 +357,14 @@ class BiounitsFrame():
             fractionsframe = FractionsFrame(frame=canvas_frame,
                                             data=self.data.loc[self.data.Biounit == biounit],
                                             fractions=fractions,
-                                            x=x, y=y,
+                                            x=x, y=y, initial_t=initial_t
                                             )
             self.biounit_fractionframe_dic[biounit] = fractionsframe
+            # creating a SgoniaFrame
+            sgoniaframe = SgoniaFrame(kde_sgonia_frame,
+                                      data=self.data.loc[self.data.Biounit == biounit],
+                                      x=x, initial_t=initial_t)
+            self.biounit_kdesgoniaframe_dic[biounit] = sgoniaframe
 
         fractions = list(set(self.data.Fraction))
         fractions.sort()
@@ -307,9 +388,13 @@ class BiounitsFrame():
         # forget everything not shown
         self.forget_all_graphs()
 
-        # select a widget to be shown
+        # select a widget to be shown ->scatter and hist
         sel_fram = self.biounit_fractionframe_dic[selected_biounit]
         sel_fram.show_fraction(selected_fraction)
+
+        # select a widget to be shown ->kde sgonia
+        sel_kdeframe = self.biounit_kdesgoniaframe_dic[selected_biounit]
+        sel_kdeframe.pack()
 
     def forget_all_graphs(self):
         """Forget all displayed graphs"""
@@ -317,6 +402,12 @@ class BiounitsFrame():
         widgets = []
         for item in fractionframes:
             widgets += list(item.fraction_widget_dic.values())
+
+        # to be added later
+        sgoniaframes = list(self.biounit_kdesgoniaframe_dic.values())
+        widgets2 = [item.widget for item in sgoniaframes]
+        widgets = widgets+widgets2
+
         for widget in widgets:
             widget.pack_forget()
 
@@ -344,11 +435,11 @@ class FractionsFrame():
     vertical line that functions as a divisor
     """
 
-    def __init__(self, frame, data, fractions, x, y):
+    def __init__(self, frame, data, fractions, x, y, initial_t):
 
         self.data = data
         self.x = x
-        self.t = 1.0
+        self.t = initial_t
 
         self.fraction_figure_dic = {}
         self.fraction_canvas_dic = {}
@@ -466,26 +557,126 @@ class InformationFrame():
             label["text"] = display
 
 
+class SgoniaFrame():
+    """
+    Internal class for EnrichmentTopLevel
+    Has no buttons
+
+    This Frame houses a univariate Gaussian of "S" Fraction for X column
+    The S fraction is first processed by "theshold_gainer" function that removes
+    smaller, left peak from dataset
+
+    Then Normal distribution is drawn, and enrichment_threshold is plotted as a part
+    of the Normal distribution
+    """
+
+    def __init__(self, frame, data, x, initial_t):
+        self.data = data
+        self.x = x
+        self.t = initial_t
+        self.figure = Figure((10, 5))
+        self.ax = self.figure.add_subplot(111)
+        self.canvas = FigureCanvasTkAgg(self.figure, master=frame)
+        self.widget = self.canvas.get_tk_widget()
+        self.mean = None
+        self.stdev = None
+
+        # beautifying ax a bit
+        biounit = list(set(self.data.Biounit))[0]
+        self.ax.set_title(
+            f"Univariate Gaussian density plot for S fraction of {biounit}")
+        self.ax.set_xlabel(x)
+        self.figure.subplots_adjust(bottom=0.150)
+
+        # do the GMM stuff
+        sgonia_t = threshold_gainer(self.data, self.x)
+        # threshold_gainer is a function for estimating GMM of Sgonia
+        sgonia_df = self.data.loc[self.data.Fraction == "S"]
+        sgonia = sgonia_df.loc[sgonia_df[x] > sgonia_t]
+        chi_array = get_appropriate_array(sgonia, 0, x)
+
+        # estimate the Sgonial GMM
+        gm = GMM(1)
+        gm.fit(chi_array)
+        self.mean = float(gm.means_)
+        self.stdev = float(gm.covariances_)**0.5
+        # plotting
+        mean = self.mean
+        stdev = self.stdev
+
+        # <-this will plot entire curve
+        x = np.linspace(mean - 3*stdev, mean + 3*stdev, 100)
+        # <-represents a part until enrichment_t
+        px = np.arange(mean-3*stdev, self.t, self.t/100)
+        # <- normal distribution by estimated parameters
+        iq = stats.norm(mean, stdev)
+        # <- Integral of -INF to self.t of GMM
+        uncertain_perc = round(100*iq.cdf(self.t), 2)
+
+        self.ax.plot(x, stats.norm.pdf(x, mean, stdev))  # <- plot a curve
+        # fill between and add text
+        # <- this will be stored in ax.collections
+        self.ax.fill_between(px, iq.pdf(px), color="purple")
+        props = dict(boxstyle="round", facecolor="wheat", alpha=0.9)
+        display = f"The purple part is {uncertain_perc} %"
+        self.ax.text(0.70, 0.90, display, transform=self.ax.transAxes,
+                     bbox=props)  # <- this will be stored in ax.texts
+
+    def update_kdesgonia_plot(self, new_t):
+        """updates kdesgonia plot for a new threshold"""
+        ax = self.ax
+        mean = self.mean
+        stdev = self.stdev
+
+        ax.collections.pop()  # <-this removes prior fill
+
+        # <-represents a part until enrichment_t
+        px = np.arange(mean-3*stdev, new_t, new_t/100)
+        iq = stats.norm(mean, stdev)
+        # <- this will be stored in ax.collections
+        ax.fill_between(px, iq.pdf(px), color="purple")
+
+        uncertain_perc = round(100*iq.cdf(new_t), 2)
+        display = f"The purple part is {uncertain_perc} %"
+        ax.texts[0].set_text(display)
+        self.canvas.draw()
+
+    def pack(self):
+        """forget it, its china town"""
+        self.widget.pack()
+
+
 class EnrichmentTopLevel():
     """TopLevel that houses all Enrichment structures"""
 
     def __init__(self, data, x="YEL-HLog", y="FSC-HLog"):
 
-        #plt.style.use("ggplot")
-        #plt.style.use("tableau-colorblind10") 
-        plt.style.use("fivethirtyeight") #<-This one proved the best
-        #plt.style.use("seaborn-darkgrid")
-        
+        # plt.style.use("ggplot")
+        # plt.style.use("tableau-colorblind10")
+        plt.style.use("fivethirtyeight")  # <-This one proved the best
+        # plt.style.use("seaborn-darkgrid")
+
         self.master = tk.Toplevel()
         self.x = x
         self.data = data
 
-        self.biounits_structure = None
-        self.information_structure = None
-        self.bt_dictionary = {}
-        self.backend_result = None
+        self.biounits_structure = None  # <-BiounitsFrame class
+        self.information_structure = None  # <-InformationFrame class
+        self.bt_dictionary = {}  # <-{Biounit : Threshold}
+        self.backend_result = None  # <- displaying result of NED calculation
 
         self.master.title("Number, Enrichment, & Depletion Menu")
+
+        # Fixing lack of "Biounit" and "Fraction" column
+        if not hasattr(self.data, "Biounit"):
+            try:
+                create_bunit_frac(self.data)
+            except ValueError:
+                _faulty_samples = [item for item in list(
+                    set(data.Sample)) if "-" not in item]
+                raise ValueError(
+                    f'The following samples do not have "-": \n {_faulty_samples}')
+
         # Create a BiounitFrame -> stores Graphs
         biounits_frame = tk.Frame(master=self.master)
         biounits_frame.pack(side="left", anchor="nw")
@@ -521,15 +712,23 @@ class EnrichmentTopLevel():
             "button_press_event", self.update_btdictionary) for figure in figures]
         # Adding option for backend
 
-        tk.Button(master=info_fr, text="Replicate-based",width=20,
+        tk.Button(master=info_fr, text="Replicate-based", width=20,
                   command=self.replicate_backend).pack()
-        tk.Button(master=info_fr, text="Bootstrap-based",width=20,
+        tk.Button(master=info_fr, text="Bootstrap-based", width=20,
                   command=self.bootstrap_backend).pack()
 
     def update_btdictionary(self, *args):
         """updates the {biounit}:{threshold} dictionary"""
         self.bt_dictionary = self.biounits_structure.yield_btdictionary()
+        # updating information presentation
         self.information_structure.update(self.bt_dictionary)
+        # updating kde plot
+        # {biounit : Sgoniaframe}
+        _dic = self.biounits_structure.biounit_kdesgoniaframe_dic
+        for biounit in self.bt_dictionary.keys():
+            new_t = self.bt_dictionary[biounit]
+            sgoniaframe = _dic[biounit]
+            sgoniaframe.update_kdesgonia_plot(new_t)
 
     def replicate_backend(self):
         """calculations according to repeated measurements"""
@@ -560,7 +759,7 @@ class EnrichmentTopLevel():
     def create_backend_display(self, dataframe):
         """Create backend display"""
         backendres_fr = tk.Frame(master=self.master)
-        backendres_fr.pack(side="right", anchor="nw",fill="x",expand=True)
+        backendres_fr.pack(side="right", anchor="nw", fill="x", expand=True)
         self.backend_result = Table(parent=backendres_fr, dataframe=dataframe)
         self.backend_result.show()
 

@@ -130,12 +130,6 @@ class Backbone():
         delete_object.grid(row=0, column=6)
 
 
-# ADD & REMOVE DATA BLOCK : END
-
-
-#####
-
-
     def start(self):
         """Starts the GUI"""
         self.main.mainloop()
@@ -337,37 +331,50 @@ class MDSS():
 
         """
 
-        main = mainclass.main  # main is tk.Tk root
-        frame = tk.Frame(master=main)  # initializes frame
+        master = mainclass.main  # master is tk.Tk root
+        frame = tk.Frame(master=master)  # initializes frame
+        self.main=mainclass
         self.frame = frame
         self.info = names
         self.data = merged_data
         self.debrisfree_data = None
         self.debris_top = None
-        frame.grid(row=1, column=0)
+        self.info_but = None
+        
         # creates a button that promts exportation of data
         export_but = tk.Button(master=frame, text="Export",
                                command=self.export_data)
-        export_but.grid(row=0, column=2)
+        export_but.grid(row=0, column=2,sticky="nsew")
 
         info_butt = tk.Button(master=frame, text="MERGED DATA",
                               command=self.info_prompt)
-        info_butt.grid(row=0, column=0)
+        self.info_but=info_butt
+        info_butt.grid(row=0, column=0,sticky="nsew")
 
         gating_but = tk.Button(master=frame, text="GATING",
-                               command=lambda: guigo(self.data))
-        gating_but.grid(row=0, column=5)
+                               command=self.gating)        
 
+        #gating_but = tk.Button(master=frame, text="GATING",
+        #                       command=lambda: guigo(self.data))
+        gating_but.grid(row=0, column=5,sticky="nsew")
+
+        #enrichment_but = tk.Button(
+         #   master=frame, text="ENRICHMENT", command=lambda: XYSelectorTopLevel(self.data))
         enrichment_but = tk.Button(
-            master=frame, text="ENRICHMENT", command=lambda: XYSelectorTopLevel(self.data))
-        enrichment_but.grid(row=0, column=6)
+            master=frame, text="ENRICHMENT", command=self.enrichment)
+        enrichment_but.grid(row=0, column=6,sticky="nsew")
 
         debrisexc_but = tk.Button(
             master=frame, text="Remove Debris", command=self.debris_removal)
-        debrisexc_but.grid(row=0, column=7)
+        debrisexc_but.grid(row=0, column=7,sticky="nsew")
         # stores this frame in mainclass.frames list for better removal
         mainclass.frames.append(self)
-
+        
+        self.place() #<-places it on the grid
+    
+    def place(self):
+        self.frame.grid(row=1, column=0)
+        
     def debris_removal(self):
         """Starts debris removal procedure"""
         self.debris_top = DebrisDataManager(self.data)
@@ -377,10 +384,21 @@ class MDSS():
     def debris_removal_end(self):
         """Ends debris removal procedure"""
         print("Debris removal ended")
-
-        self.data = self.debris_top.selected_data
-
+        selected_data=self.debris_top.selected_data
         self.debris_top.master.destroy()
+        if selected_data is None:
+            return()
+        names=list(dict.fromkeys(selected_data.Name))
+        MDFSS = MDebrisFreeSS(self.main,names,merged_data=selected_data)
+        MDFSS.place()
+
+    
+    def gating(self):
+        guigo(self.data)
+    
+    def enrichment(self):
+        XYSelectorTopLevel(self.data)
+        
 
     def export_data(self):
         """
@@ -403,6 +421,17 @@ class MDSS():
         if ext == ".csv":
             data.to_csv(directory)
 
+class MDebrisFreeSS(MDSS):
+    def place(self):
+        self.frame.grid(row=2,column=0)
+
+    def __init__(self, mainclass, names, merged_data):
+        super().__init__(mainclass, names, merged_data)
+        self.info.insert(0,"Removed debris from following files")
+        delete_object = tk.Button(master=self.frame, text="Remove data",
+                                  command=lambda: self.frame.destroy())
+        delete_object.grid(row=0, column=4,sticky="nsew")
+        self.info_but["text"]="Debris Free Data"
 
 def start_interface():
     """Starts"""
