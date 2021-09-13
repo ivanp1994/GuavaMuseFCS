@@ -43,6 +43,8 @@ and fraction depleted of spermatogonia ("M").
 
 Our dataset consists of 2 mouse - one which has been subjected to a mild experiment, and one that served as a control to that experiment. Each mouse has 4 fractions, to the total number of 8 different samples. Additionally, every sample has been 3 three times in quick succession on Guava Muse, to a total of 24 Guava Muse "samples".
 
+Additionally, another .FCS file is provided called "debris". This is a sample that has been visually inspected and contains no cells, only fragments of cells. This dataset will be very useful in [debris removal](#debris)
+
 
 ## Enrichment procedure <a name="enrich"></a>
 
