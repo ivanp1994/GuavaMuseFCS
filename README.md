@@ -43,7 +43,7 @@ and fraction depleted of spermatogonia ("M").
 
 Our dataset consists of 2 mouse - one which has been subjected to a mild experiment, and one that served as a control to that experiment. Each mouse has 4 fractions, to the total number of 8 different samples. Additionally, every sample has been 3 three times in quick succession on Guava Muse, to a total of 24 Guava Muse "samples".
 
-Additionally, another .FCS file is provided called "debris". This is a sample that has been visually inspected and contains no cells, only fragments of cells. This dataset will be very useful in [debris removal](#debris)
+Additionally, another .FCS file is provided called "debris". This is a sample that has been visually inspected and contains no cells, only fragments of cells. This dataset will be very useful in [debris removal](#debris).
 
 
 ## Enrichment procedure <a name="enrich"></a>
@@ -99,45 +99,52 @@ One of the problems in flow cytometry is existence of cellular debris - fragment
 
 Our method is latter, and it is based on the following idea. Guava Muse device is fundametally a cell counter, but like with every cell counter, it requires that the user has at least approximate idea of how much cells per microliter are in a sample - too concentrated or too diluted sample means that measurement will be imprecise (too concentrated sample might even clog the capillary of the device). Ideally, user has precounted his input sample with a hemocytometer and he knows how much cells will be in his input sample. The problem then is to determine a threshold to exclude cells, untill the number of cells is equal to the number of cells that the user knows is (more or less) true. 
 
+One other option is to record a sample that the user *knows* has no cells, but contains cell fragments, and setting a debris exclusion threshold according to that sample. Both options are present.
+
 By clicking on **Remove Debris** a window opens.
 
-![debris intro](https://user-images.githubusercontent.com/84333373/132226947-bf8314af-63a9-4c42-b691-47a4620b9b15.PNG)
+![debrmanag](https://user-images.githubusercontent.com/84333373/133114324-12c55c3f-1142-4040-93d3-28ac5633b51f.PNG)
 
-Clicking on **Select Input** opens a new window in which user can select the samples to undergo debris exclusion.
+The X and Y will be axes of a scatterplot used to pick out debris. Usually, Y is something that represents cell size, such as forward scatter height.
 
-![debris select input](https://user-images.githubusercontent.com/84333373/132226951-eb71cebb-71fb-4f36-9d51-7c4047222f49.PNG)
+In the *Biounit Label and Command menu* you can see your Biounits (Control and Experiment), and next to them are two buttons - **From internal** and **From external**. 
 
-Clicking on **Finalize** destroys the window. Now, user has to input X and Y values that will be used to plot a scatterplot. Clicking on **Select X&Y** opens a new window.
+Clicking on **From internal** opens a prompt in which you can select what Replicates will you use for your debris removal. 
+Clicking on **From external** opens a prompt in which you can navigate to a .FCS file you will use your debris removal. We have provided debris.FCS in the sample datasets.
 
-![debris select xy](https://user-images.githubusercontent.com/84333373/132226952-522d340c-45c9-41a9-9b42-c4304f047ddd.PNG)
+Selecting either option will update the *Path/Input selection* for each biounit. We have chosen to navigate to the same debris.FCS file provided.
 
-Clicking on **Load** destroys the window. Now, user has to manually set a threshold for Y value. This threshold will apply to all biounits (see [Naming Scheme section](#naming)).
+![debrmanag2](https://user-images.githubusercontent.com/84333373/133115716-5fa0c000-04b8-4246-9d08-fed6b33bf2b1.PNG)
 
-The top row of buttons changes the Biounit, the bottom row of buttons changes the Input Fraction displayed. Clicking on the graph sets a horizontal line and updates the graph to show what cell concentration is after placement. The bottom most row consists of a table in which the user can track the average number of cells per microliter, and the average Y value threshold. Additionally, one can use the Tab key to move the graphs along.
+Clicking on **Enter Debris Removal Window** opens a new window.  
 
-After setting thresholds, and double checking, all user has to do is exit the *Debris Exclusion* window.
+![debriexc](https://user-images.githubusercontent.com/84333373/133115925-1f8d0ab4-06ce-4088-b315-d487f2b7c4df.PNG)
 
-Before setting threshold:
+The window contains scatterplot a of selected X and Y values. Clicking on the scatterplot within its boundaries places a horizontal line. Only events above this horizontal line are considered cells, and the textbox within the scatterplot is updated to reflect the number of cells above the horizontal line. Every biounit is unique, even when the debris file is the same, and therefore a whole total of biounits * debris replicates scatterplots are possible. You can switch to the next scatterplot by using Tab key, or by clicking buttons in the upper two rows.
 
-![debr_exc_new1](https://user-images.githubusercontent.com/84333373/132536485-6296880c-dc08-4eb4-909a-535342f00258.PNG)
+Since this is a dataset in which we haven't seen any cells, our threshold will be relatively high, and the amount of our "cells" will be relatively low. 2 percent of dataset remains, reflecting the possibility that in a suspension of 100 cellular fragments, there are at least 2 passing cells. 
 
-After setting threshold:
+![debriexc2](https://user-images.githubusercontent.com/84333373/133116844-31147de8-75d1-423e-b48a-475513a094e1.PNG)
 
-![debr_exc_new2](https://user-images.githubusercontent.com/84333373/132536488-18b14325-51b2-41ec-9355-922dfa088480.PNG)
+Finish the debris removal by exiting the *Debris Exclusion* window. A prompt will appear asking the user for confirmation. Click Yes to finalize the procedure. Click No to abort the debris removal procedure, and click Cancel to return to the procedure. After clicking Yes, *Debris Removal Manager* is updated to reflect selected thresholds. 
 
-Now, all user has to do is exit the window, and a prompt will appear :
+Exiting *Debris Removal Manager* updates the *GuavaMuse Parser* window with a new dataset.
 
-![debr_exc_new3](https://user-images.githubusercontent.com/84333373/132536489-452534cc-5604-4b12-a54c-0174adfb41a2.PNG)
+![main](https://user-images.githubusercontent.com/84333373/133117838-fd82f6f4-9631-463d-967a-ff300ec16392.PNG)
+![debrmang3](https://user-images.githubusercontent.com/84333373/133117841-98eac3c9-50d3-41af-88f5-72d4cdb303e4.PNG)
 
-In the prompt, user is reminded how much data they are removing. Pressing Yes removes all the debris. Pressing No aborts the entire procedure of debris removal. Pressing Cancel let's user continue tweaking debris exclusion.
+Clicking on **Debris Free Data** you can see all .FCS files you loaded. You can manage this dataset just like any other dataset - export it, delete it, gate it, calculate enrichment, remove debris (again), etc. 
 
-![debris intro_after](https://user-images.githubusercontent.com/84333373/132226948-e3847e1a-85ae-4617-bd9b-99d43030e80f.PNG)
+Revising our [enrichment](#enrich) procedure we can see significant improvements :
 
-With our debris removed, we can revisit our [enrichment](#enrich) procedure :
+![enr](https://user-images.githubusercontent.com/84333373/133118594-21ed13de-3939-4245-86fc-b468a6fe3fc1.PNG)
 
-![ned result 2](https://user-images.githubusercontent.com/84333373/132232666-55bed614-82dc-4be0-b47e-dea9c65d0665.PNG)
+First thing we can note is that the elipsoid population from S fraction is removed - this likely represented cell fragments with their c-kit receptor intact. Another thing is that our enrichment is improved almost 3 times!
 
-There's a slight, but not insignificant improvement to our enrichment, but not to our depletion. 
+Branch **experiment** contains additional procedures and graphs. For more information, check it out!
+
+
+
 
 
 
