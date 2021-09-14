@@ -66,16 +66,22 @@ A familiar menu opens up :
 
 Select your X and Y values, then click **Load**
 
-Initially, the *Number, Enrichment, & Depletion Menu* is empty. The top row of buttons changes the Biounit, the bottom row of buttons changes the Fraction displayed. Click on whatever you want to show that combination of Fraction and Biounit.
+Initially, the *Number, Enrichment, & Depletion Menu* consists of three rows of buttons - Command buttons, Biounit buttons, and Fraction buttons.
+Biounit buttons change the Biounit, Fraction buttons change the Fraction, and Command buttons execute following comands.
 
+Initially, no graph is present. 
 
-![NED menu 1](https://user-images.githubusercontent.com/84333373/132229853-9345a6c2-d2ce-497c-bbd1-4afd9087e3b7.PNG)
+![1](https://user-images.githubusercontent.com/84333373/133249143-d1eba9aa-af12-4eb8-be2d-b4cc9a2edd5e.PNG)
 
-After selecting a graph.
+But clicking on any element in Biounit/Fraction buttons shows two plots for that combination. To the left is a scatterplot of Y versus X, and to the right is a normalized histogram of X values.
 
-![NED menu 2](https://user-images.githubusercontent.com/84333373/132229856-11e12c61-ae2e-4b22-be89-49166fa7b8bb.PNG)
+![2](https://user-images.githubusercontent.com/84333373/133249146-f7da9ce9-e8b8-4c5e-a7a6-ff5d6683968e.PNG)
 
-Two graphs are displayed - a scatterplot of your X and Y values, and a normalized histogram of your X values to the right. Clicking on the either graph places one big vertical line. The textbox within the graph updates to tell you what percentage of dataset is to the right and what percentage of dataset is to the left. To the very right of the graphs is a reminder of your biounits and X values that are to be your threshold. Below the reminder, there are two buttons called **Replicate-based** and **Bootstrap-based**. These buttons calculate the NED - number, enrichment, and depletion of your procedure. The NED is calculated by the following formulaae :
+Clicking within the boundaries of any graph places a vertical line with x coordinate where you clicked. This is the threshold line and it is used for further calculations. There is a box with text in both graphs, showing what percentage of the dataset is to the left, what percentage of the dataset is to the right, and the X coordinate of the line. Clicking on **Set Box visibility** toggles this box on and off.
+
+![box invisi](https://user-images.githubusercontent.com/84333373/133249147-d3622ea3-e4a0-4e89-9ddd-62d3e5e733e1.PNG)
+
+Clicking on either **Replicate-based** or **Bootstrap-based** calculates the following things:
 
 1. Number - What percentage of events are to the right of your threshold line in the "PM" fraction
 2. Enrichment - Ratio of percentage of events to the right of your threshold line in the "S" fraction, and percentage of events to the right of your threshold line in the "PM" fraction
@@ -87,7 +93,7 @@ The difference between **Replicate-based** and **Bootstrap-based** are in the wa
 
 Clicking on either opens a new window to the right.
 
-![ned result](https://user-images.githubusercontent.com/84333373/132231811-0d135bcd-841e-4918-ae7d-feadc258256b.PNG)
+![after operation](https://user-images.githubusercontent.com/84333373/133250055-7820569c-f387-436c-b3c0-2623ddb69d7a.PNG)
 
 This window displays your results in a pandastable type of table. Right click on the table to export it. You can see that both our enrichment and depletion are relatively low. Is there a way to fix that?
 
@@ -139,7 +145,9 @@ Revising our [enrichment](#enrich) procedure we can see significant improvements
 
 ![enr](https://user-images.githubusercontent.com/84333373/133118594-21ed13de-3939-4245-86fc-b468a6fe3fc1.PNG)
 
-First thing we can note is that the elipsoid population from S fraction is removed - this likely represented cell fragments with their c-kit receptor intact. Another thing is that our enrichment is improved almost 3 times!
+First thing we can note is that the elipsoid population from S fraction is removed - this likely represented cell fragments with their c-kit receptor intact. Another thing to note is that while enrichment has improved, our depletion stayed the same - and  this likely reflects reality better.
+
+![after debris](https://user-images.githubusercontent.com/84333373/133250638-b610afbc-84bc-4562-8986-ca6754e6c683.PNG)
 
 Branch **experiment** contains additional procedures and graphs. For more information, check it out!
 
