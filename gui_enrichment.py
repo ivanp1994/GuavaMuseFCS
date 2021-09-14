@@ -25,7 +25,7 @@ from sklearn.utils import resample
 from sklearn.mixture import GaussianMixture as GMM
 from pandastable import Table
 from .supplemental import get_numerical, ModifiedOptionMenu
-import scipy.stats as stats
+from scipy import stats
 
 # %%FUNCTIONS
 
@@ -333,6 +333,10 @@ class BiounitsFrame():
         self.kde_sgonia_frame = kde_sgonia_frame
         kde_sgonia_frame.pack()
 
+        tk.Label(master=bt_biounit_frame, text="Biounit: ", relief="ridge",
+                 bg="gainsboro", width=20).pack(side="left", anchor="w")
+        tk.Label(master=bt_fraction_frame, text="Fraction: ", relief="ridge",
+                 bg="gainsboro", width=20).pack(side="left", anchor="w")
         #  Radiobuttons for both variables / Creation of FractionsFrame structure
         for biounit in self.biounits:
             fractions = self.data.loc[self.data.Biounit == biounit]["Fraction"]
@@ -349,9 +353,10 @@ class BiounitsFrame():
             initial_t = np.percentile(input_series, 99)
 
             # create radiobuttons to control Biounit
+
             rb = tk.Radiobutton(master=bt_biounit_frame, indicatoron=0, width=20,
                                 value=biounit, text=biounit, variable=self.biounit_selected)
-            rb.pack(anchor="w", side="right")
+            rb.pack(anchor="w", side="left")
 
             # creating a FractionsFrame #it's just created, not packed
             fractionsframe = FractionsFrame(frame=canvas_frame,
@@ -369,6 +374,7 @@ class BiounitsFrame():
         fractions = list(set(self.data.Fraction))
         fractions.sort()
         for fraction in fractions:
+
             rb = tk.Radiobutton(master=bt_fraction_frame, indicatoron=0, width=5,
                                 value=fraction, text=fraction, variable=self.fraction_selected)
             rb.pack(anchor="w", side="left")
@@ -448,7 +454,7 @@ class FractionsFrame():
         self.lines = []
         #  "private" variables
         axes = []
-        props = dict(boxstyle="round", facecolor="wheat", alpha=0.9)
+        props = dict(boxstyle="round", facecolor="wheat", alpha=0.6)
         # Create all figures/textboxs/update trackers
         for fraction in fractions:
             # %% Create all figures
@@ -467,14 +473,19 @@ class FractionsFrame():
 
             # %% Create a textbox
             series = subset[x]
+
             left = np.count_nonzero(series < self.t)/len(series)*100
-            left = round(left, 2)
             right = 100 - left
-            right = round(right, 2)
-            display = "Left:   "+str(left)+"%"+"\n"+"Right: "+str(right)+"%"
-            textbox_1 = sc.text(0.70, 0.90, display,
+            left = str(round(left, 2))
+            right = str(round(right, 2))
+            th = round(self.t, 2)
+
+            display = f"Left: {left} % \nRight: {right} % \n X coordinate = {th}"
+            #display = "Left:   "+str(left)+"%"+"\n"+"Right: "+str(right)+"%"
+
+            textbox_1 = sc.text(0.60, 0.80, display, fontsize=12,
                                 transform=sc.transAxes, bbox=props)
-            textbox_2 = ds.text(0.70, 0.90, display,
+            textbox_2 = ds.text(0.60, 0.80, display, fontsize=12,
                                 transform=ds.transAxes, bbox=props)
 
             # %% Update all dictionaries and lists
@@ -508,6 +519,7 @@ class FractionsFrame():
         _private = [line.set_xdata(self.t) for line in self.lines]
         self.update_textboxes()
         self.redraw_canvases()
+        return()
 
     def redraw_canvases(self):
         """Redraw of all canvases to update changes in the line positioning"""
@@ -520,41 +532,19 @@ class FractionsFrame():
         for fraction in self.fraction_textboxes:
             subset = self.data.loc[self.data["Fraction"] == fraction]
             series = subset[self.x]
+
             left = np.count_nonzero(series < self.t)/len(series)*100
-            left = round(left, 2)
-            right = 100-left
-            right = round(right, 2)
-            display = "Left:   "+str(left)+"%"+"\n"+"Right: "+str(right)+"%"
+            right = 100 - left
+            left = str(round(left, 2))
+            right = str(round(right, 2))
+
+            th = round(self.t, 2)
+            display = f"Left: {left} % \nRight: {right} % \n X coordinate = {th}"
+            #display = "Left:   "+str(left)+"%"+"\n"+"Right: "+str(right)+"%"
 
             textboxes = self.fraction_textboxes[fraction]
             textboxes[0].set_text(display)
             textboxes[1].set_text(display)
-
-
-class InformationFrame():
-    """
-    Internal class for EnrichmentTopLevel
-    It's just used to display {biounit}:{threshold} '
-    """
-
-    def __init__(self, master, bt_dictionary):
-        self.master = master
-        self.biounit_label_dic = {}
-
-        for biounit in bt_dictionary.keys():
-            label = tk.Label(master=self.master, text="", relief="raised")
-            label.pack(anchor="w", expand=True, fill="both")
-            self.biounit_label_dic[biounit] = label
-
-        self.update(bt_dictionary)
-
-    def update(self, bt_dictionary):
-        """Update the info frame"""
-        for bunit in bt_dictionary.keys():
-            threshold = round(bt_dictionary[bunit], 3)
-            display = f"{bunit} : {threshold}"
-            label = self.biounit_label_dic[bunit]
-            label["text"] = display
 
 
 class SgoniaFrame():
@@ -606,21 +596,11 @@ class SgoniaFrame():
 
         # <-this will plot entire curve
         x = np.linspace(mean - 3*stdev, mean + 3*stdev, 100)
-        # <-represents a part until enrichment_t
-        px = np.arange(mean-3*stdev, self.t, self.t/100)
-        # <- normal distribution by estimated parameters
-        iq = stats.norm(mean, stdev)
-        # <- Integral of -INF to self.t of GMM
-        uncertain_perc = round(100*iq.cdf(self.t), 2)
-
-        self.ax.plot(x, stats.norm.pdf(x, mean, stdev))  # <- plot a curve
-        # fill between and add text
-        # <- this will be stored in ax.collections
-        self.ax.fill_between(px, iq.pdf(px), color="purple")
+        self.ax.plot(x, stats.norm.pdf(x, mean, stdev))
         props = dict(boxstyle="round", facecolor="wheat", alpha=0.9)
-        display = f"The purple part is {uncertain_perc} %"
-        self.ax.text(0.70, 0.90, display, transform=self.ax.transAxes,
-                     bbox=props)  # <- this will be stored in ax.texts
+        self.ax.text(0.70, 0.90, "", transform=self.ax.transAxes, bbox=props)
+        # command to draw the curve
+        self.update_kdesgonia_plot(self.t)
 
     def update_kdesgonia_plot(self, new_t):
         """updates kdesgonia plot for a new threshold"""
@@ -628,16 +608,17 @@ class SgoniaFrame():
         mean = self.mean
         stdev = self.stdev
 
-        ax.collections.pop()  # <-this removes prior fill
+        if len(ax.collections) > 0:
+            ax.collections.pop()  # <-this removes prior fill
 
         # <-represents a part until enrichment_t
         px = np.arange(mean-3*stdev, new_t, new_t/100)
         iq = stats.norm(mean, stdev)
         # <- this will be stored in ax.collections
-        ax.fill_between(px, iq.pdf(px), color="purple")
+        ax.fill_between(px, iq.pdf(px), color="dodgerblue")
 
         uncertain_perc = round(100*iq.cdf(new_t), 2)
-        display = f"The purple part is {uncertain_perc} %"
+        display = f"The blue part is {uncertain_perc} %"
         ax.texts[0].set_text(display)
         self.canvas.draw()
 
@@ -659,11 +640,10 @@ class EnrichmentTopLevel():
         self.master = tk.Toplevel()
         self.x = x
         self.data = data
-
         self.biounits_structure = None  # <-BiounitsFrame class
-        self.information_structure = None  # <-InformationFrame class
         self.bt_dictionary = {}  # <-{Biounit : Threshold}
         self.backend_result = None  # <- displaying result of NED calculation
+        self.backend_frame = None  # <- tkinter Frame that houses backend result
 
         self.master.title("Number, Enrichment, & Depletion Menu")
 
@@ -677,23 +657,24 @@ class EnrichmentTopLevel():
                 raise ValueError(
                     f'The following samples do not have "-": \n {_faulty_samples}')
 
+        # Create a CommandFrame -> lists buttons
+        command_frame = tk.Frame(master=self.master)
+
+        # Create a BackendFrame -> stores Table for result of backend
+        backend_frame = tk.Frame(master=self.master)
+        self.backend_frame = backend_frame
+
         # Create a BiounitFrame -> stores Graphs
         biounits_frame = tk.Frame(master=self.master)
+
+        # pack them all
+        command_frame.pack(side="top", anchor="nw")
         biounits_frame.pack(side="left", anchor="nw")
+        backend_frame.pack(side="right", anchor="nw")
+
+        # Create an initial BiounitsFrame structure and bt_dictionary
         self.biounits_structure = BiounitsFrame(biounits_frame, data, x, y)
         self.bt_dictionary = self.biounits_structure.yield_btdictionary()
-
-        # Create InformationFrame -> displays dictionary
-        info_fr = tk.Frame(master=self.master)
-        info_fr.pack(side="left", anchor="n")
-        tk.Label(master=info_fr, text="").pack(
-            anchor="w", expand=True, fill="both")
-        tk.Label(master=info_fr, text="").pack(
-            anchor="w", expand=True, fill="both")
-        tk.Label(master=info_fr, text="").pack(
-            anchor="w", expand=True, fill="both")
-        self.information_structure = InformationFrame(
-            info_fr, self.bt_dictionary)
 
         # Connect Biounit/Fraction variables to updating bt_dictionary
         self.biounits_structure.fraction_selected.trace(
@@ -710,18 +691,38 @@ class EnrichmentTopLevel():
             figures += figs
         control_list = [figure.canvas.callbacks.connect(
             "button_press_event", self.update_btdictionary) for figure in figures]
-        # Adding option for backend
 
-        tk.Button(master=info_fr, text="Replicate-based", width=20,
-                  command=self.replicate_backend).pack()
-        tk.Button(master=info_fr, text="Bootstrap-based", width=20,
-                  command=self.bootstrap_backend).pack()
+        # Command buttons
+        tk.Label(master=command_frame, text="Commands", width=20,
+                 relief="ridge", bg="gainsboro").pack(side="left", anchor="w")
+        tk.Button(master=command_frame, text="Set Box visibility", width=20,
+                  command=self.set_visible).pack(side="left", anchor="w")
+        tk.Button(master=command_frame, text="Replicate-based", width=20,
+                  command=self.replicate_backend).pack(side="left", anchor="w")
+        tk.Button(master=command_frame, text="Bootstrap-based", width=20,
+                  command=self.bootstrap_backend).pack(side="left", anchor="w")
+
+    def set_visible(self):
+        """shows boxes in the graph"""
+        fractions = list(
+            self.biounits_structure.biounit_fractionframe_dic.values())
+        textboxes = []
+        for item in fractions:
+            partial_textboxes = list(item.fraction_textboxes.values())
+            textboxes += partial_textboxes  # list of tuples / unfurl it to a list
+        flattened = [item for sublist in textboxes for item in sublist]
+
+        visibility = not flattened[0]._visible
+        for item in flattened:
+            item.set_visible(visibility)
+        # now redraw all canvases
+        for item in fractions:
+            item.redraw_canvases()
 
     def update_btdictionary(self, *args):
         """updates the {biounit}:{threshold} dictionary"""
         self.bt_dictionary = self.biounits_structure.yield_btdictionary()
-        # updating information presentation
-        self.information_structure.update(self.bt_dictionary)
+
         # updating kde plot
         # {biounit : Sgoniaframe}
         _dic = self.biounits_structure.biounit_kdesgoniaframe_dic
@@ -758,8 +759,7 @@ class EnrichmentTopLevel():
 
     def create_backend_display(self, dataframe):
         """Create backend display"""
-        backendres_fr = tk.Frame(master=self.master)
-        backendres_fr.pack(side="right", anchor="nw", fill="x", expand=True)
+        backendres_fr = self.backend_frame
         self.backend_result = Table(parent=backendres_fr, dataframe=dataframe)
         self.backend_result.show()
 
