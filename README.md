@@ -21,7 +21,9 @@ In order to effectively remove the left peak's interference, we iteratively appl
 
 The procedure repeats until the ratio of new and old threshold is within (0.999,1.001).
 
-The idea is that we can "purify" the targeted fraction (spermatogonia in our case) from a relatively high purity -dont have strength update later
+The idea is that we can "purify" the targeted fraction (spermatogonia in our case) from a relatively high purity. We essentially select a maximum peak, and fit a Gaussian around that peak and then truncate the outliers (beyond 2.5 standard deviations). The end result is that IF after enrichment procedure we have a peak to the right, and that peak is substantial but left tail heavy, due to high number of events, we can still fit a Gaussian over our selected population.
+
+This branch doesn't have much to add when there are two equal peaks, hence, it's experimental.
 
 
 
