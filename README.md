@@ -19,9 +19,9 @@ In order to effectively remove the left peak's interference, we iteratively appl
 3. Remove data that has X value below the threshold.
 4. Repeat procedure.
 
-The procedure repeats until the ratio of new and old threshold is within (0.999,1.001) or until convergence fails, in which case error is raised.
+The procedure repeats until the ratio of new and old threshold is within (0.999,1.001).
 
-The idea is that 
+The idea is that we can "purify" the targeted fraction (spermatogonia in our case) from a relatively high purity -dont have strength update later
 
 
 
