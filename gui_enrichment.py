@@ -409,7 +409,7 @@ class FractionsFrame():
             right = str(round(right, 2))
             th = round(self.t, 2)
 
-            display = f"Left: {left} % \nRight: {right} % \n X coordinate = {th}"
+            display = f"Left: {left} % \nRight: {right} % \nX coordinate = {th}"
             #display = "Left:   "+str(left)+"%"+"\n"+"Right: "+str(right)+"%"
 
             textbox_1 = sc.text(0.60, 0.80, display, fontsize=12,
@@ -468,7 +468,7 @@ class FractionsFrame():
             right = str(round(right, 2))
 
             th = round(self.t, 2)
-            display = f"Left: {left} % \nRight: {right} % \n X coordinate = {th}"
+            display = f"Left: {left} % \nRight: {right} % \nX coordinate = {th}"
             #display = "Left:   "+str(left)+"%"+"\n"+"Right: "+str(right)+"%"
 
             textboxes = self.fraction_textboxes[fraction]
