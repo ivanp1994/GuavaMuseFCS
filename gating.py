@@ -91,8 +91,6 @@ def gate_events(verts, data, x, y):
     gated.reset_index(inplace=True, drop=True)
     return(gated, p_within, p_without)
 
-# classes I need
-
 
 class Gate():
     """
@@ -117,8 +115,6 @@ class Gate():
         self.ax = ax
         self.verts = None
         self.poly = PolygonSelector(ax, self.onselect)
-
-        # self.poly=PolygonSelector(ax,self.onselect) #<- initiate polygon selector
 
 
 class GateInfo():
@@ -197,7 +193,7 @@ class GateInfo():
         complete_removal(gate)
 
 
-class GToplevel():
+class GatingMainWindow():
     """
     Outline of
     """
@@ -223,12 +219,12 @@ class GToplevel():
         for widget in self.infoframe.winfo_children():
             widget.destroy()
 
-        #This block isn't necessary'
-        #try:
-            #for widget in self.infoframe.winfo_children():
-                #widget.destroy()
-        #except:
-            #pass
+        # This block isn't necessary'
+        # try:
+            # for widget in self.infoframe.winfo_children():
+            # widget.destroy()
+        # except:
+            # pass
 
         self.redraw_canvas()  # get rid of all the vertices
         data = self.data
@@ -306,7 +302,7 @@ class GToplevel():
         # shifts old figures
         # I ALWAYS NEED TO RECREATE THE FIGURE. ALWAYS.
 
-        self.figure = data_figure(self.data,self.x,self.y)
+        self.figure = data_figure(self.data, self.x, self.y)
 
         # new canvas
         canvas = FigureCanvasTkAgg(self.figure, master=self.canvasframe)
@@ -343,18 +339,20 @@ class GToplevel():
 
             d[name] = contains
         d = pd.DataFrame.from_dict(data=d)  # robustnes
-        print("gates are", d.shape)
-        print("data is", data.shape)
 
         rezult = pd.concat([data, d], axis=1)  # change data for fuller data
+        self.gated_data = rezult
+        box = filedialog.messagebox.askyesno(
+            title="Export Data", message="Export Data")
+        if box:
 
-        directory = filedialog.asksaveasfilename(title="Save all data from dataset", filetypes=[(
-            "Excel files", "*.xlsx"), ("Comma Separated Values", "*.csv")], defaultextension=".csv")
-        ext = directory[-4:]
-        if ext == "xlsx":
-            rezult.to_excel(directory)
-        if ext == ".csv":
-            rezult.to_csv(directory)
+            directory = filedialog.asksaveasfilename(title="Save all data from dataset", filetypes=[(
+                "Excel files", "*.xlsx"), ("Comma Separated Values", "*.csv")], defaultextension=".csv")
+            ext = directory[-4:]
+            if ext == "xlsx":
+                rezult.to_excel(directory)
+            if ext == ".csv":
+                rezult.to_csv(directory)
 
     def __init__(self, data, x, y):
         self.master = tk.Tk()
@@ -366,10 +364,11 @@ class GToplevel():
         self.x = x
         self.y = y
         self.gate_gateinfo_dic = None
+        self.gated_data = None
         figure = data_figure(data, self.x, self.y)  # creates a figure
         canvas = FigureCanvasTkAgg(
             figure, master=self.canvasframe)  # creates a canvas
-
+        plt.style.use("fivethirtyeight")
         # I NEED TO CREATE A DEEP COPY OF A FIGURE
         self.figure = figure
         self.canvas = canvas
@@ -398,50 +397,46 @@ class GToplevel():
         self.infoframe.grid(row=2, column=0)
 
 
-class XYSelectorTopLevel():
-    """
-    Tkinter toplevel here just to select X and Y variable
-    """
-
-    def select_xy(self):
-        """Finalizes X Y selection and self-destructs"""
-        x = self.x.get()
-        y = self.y.get()
-        data = self.data
-        GToplevel(data, x, y)  # <-THIRD AND FINAL TOP LEVEL, FOR GATING
-        self.master.destroy()
-
+class GatingDataManager():
     def __init__(self, data):
-        """Initializes the selector"""
-        master = tk.Toplevel()
-        self.master = master
-        self.master.title("X & Y")
         self.data = data
-        num = get_numerical(data)
-        columns = list(num.columns)
-        x = ModifiedOptionMenu(self.master, "X=", columns, None)
-        x.place(0, 0)
-        self.x = x.variable
-        y = ModifiedOptionMenu(self.master, "Y=", columns, None)
-        y.place(1, 0)
-        self.y = y.variable
-        tk.Button(master=self.master, text="LOAD", command=self.select_xy).grid(
-            row=0, column=2, rowspan=2, sticky="nsew")
+        self.master = tk.Toplevel()
+        self.categorical = get_categorical(data)
+        self.selected_categorical = None
+        self.object_in_session = None
+        self.gated_data = None
+        self.x = None
+        self.y = None
 
+        tk.Button(master=self.master, text="Select Data", command=self.categorical_data_selection).grid(
+            row=0, column=0, columnspan=2, sticky="nsew")
+        xy_options = list(get_numerical(self.data).columns)
+        x_menu = ModifiedOptionMenu(
+            master=self.master, label="X= ", options=xy_options, typevar=None)
+        y_menu = ModifiedOptionMenu(
+            master=self.master, label="Y= ", options=xy_options, typevar=None)
+        self.x = x_menu.variable
+        self.y = y_menu.variable
 
-class GUIgating_outline():
-    """
-    First prompt for Gating
-    It selects what part will be gated
-    Not self destroyed, so multiple Gates Menus can exist
-    """
+        self.x.set("YEL-HLog")
+        self.y.set("FSC-HLog")
+        x_menu.place(1, 0)
+        y_menu.place(2, 0)
+        tk.Button(master=self.master, text="Enter Gating", command=self.enter_gating).grid(
+            row=3, column=0, columnspan=2, sticky="nsew")
 
-    def finish_selection(self):
-        """
-        Finishes selecting from DATA
-        Promts selecting for X and Y
-        """
-        self.selected_categorical = self.draw_selector.selected
+    def categorical_data_selection(self):
+        select = tk.Toplevel()
+        select.title("Select the Data for Gating")
+        self.object_in_session = DataDrawSelector(select, self.categorical)
+        tk.Button(master=self.object_in_session.button_frame, text="FINALIZE",
+                  command=lambda: self.finish_categorical_data_selection(select)).grid(row=0, column=4, sticky="nsw")
+
+    def finish_categorical_data_selection(self, select_toplevel):
+        self.selected_categorical = self.object_in_session.selected
+
+        self.object_in_session = None
+        select_toplevel.destroy()
         df = self.data
         selected_c = self.selected_categorical
         columns_c = list(selected_c.columns)
@@ -449,32 +444,27 @@ class GUIgating_outline():
         for column in columns_c:
             selected = selected_c[column]
             selected = list(set(selected))
-
             df_s = df.loc[df[column].isin(selected)]
             d[column] = len(df_s)
-
         minimal = min(d, key=d.get)
-
         selected_column = minimal
         selected_rows = selected_c[minimal]
-
         selected_df = df.loc[df[selected_column].isin(selected_rows)]
         self.selected_data = selected_df
-        # <-SECOND TOP LEVEL, FOR X AND Y
-        XYSelectorTopLevel(self.selected_data)
 
-    def __init__(self, data):
-        """Initializes the GUI toplevel"""
-        self.data = data
-        self.categorical = get_categorical(data)
-        self.selected_categorical = None
-        self.selected_data = None
+    def enter_gating(self):
+        if self.selected_categorical is None:
+            data = self.data
+        else:
+            data = self.selected_categorical
+        x = self.x.get()
+        y = self.y.get()
+        self.object_in_session = GatingMainWindow(data, x, y)
+        self.object_in_session.master.protocol(
+            "WM_DELETE_WINDOW", self.finish_gating)
 
-        select_toplevel = tk.Toplevel()
-        select_toplevel.title("Select the Data for Gating")
-        self.dataselect_master = select_toplevel  # <-FIRST TOP LEVEL, FOR DATA
+    def finish_gating(self):
 
-        draw_select_obj = DataDrawSelector(select_toplevel, self.categorical)
-        self.draw_selector = draw_select_obj
-        tk.Button(master=self.draw_selector.button_frame, text="FINALIZE",
-                  command=self.finish_selection).grid(row=0, column=4, sticky="nsw")
+        self.gated_data = self.object_in_session.gated_data
+        self.object_in_session.master.destroy()
+        self.object_in_session = None

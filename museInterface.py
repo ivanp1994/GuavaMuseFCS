@@ -10,401 +10,284 @@ from tkinter import filedialog
 import pandas as pd
 
 from .musefcsparser import parse, text_explanation
-from .gating import GUIgating_outline as guigo
+from .gating import GatingDataManager
 from .gui_enrichment import XYSelectorTopLevel
-from .supplemental import ManualEntry, select_file
+from .supplemental import select_file
 from .debris_exclusion import DebrisDataManager
 from .dfdrawer import DrawTopLevel
 
-
-class Backbone():
-    """
-    Some documentation here
-    """
-
-    # MERGING DATA BLOCK : BEGINNING
-    def merge_data(self):
-        """
-        Merges all data in one big structure, removing everything else in the process
-        Creates merged_data_set_structure that is similar to data_set_structure
-        and places it on main app,
-
-        No further data can be added unless RESET is run
-
-        Returns
-        -------
-        None.
-        """
-
-        # I want to check that every dataframe has exact number of columns
-        # because I want data to be a tight fit around themselves
-        # dataframes that were legendized have one column more
-
-        # all loaded data in form of pandas.DataFrame
-        datas = [item.data for item in self.frames]
-
-        # number of columns in everydata set
-        # if there is more than 1, that means
-        #  there are dataframes with diff num of columns
-        col_len = [len(item.columns) for item in datas]
-        col_len = set(col_len)  # removing duplicates
-        if len(col_len) != 1:
-            return()
-
-        # main = self.main  # self is the entire main_app class, self.main is the tkinter root
-
-        names = [item.name for item in self.frames]  # names of all merged data
-        merged_data = pd.concat(datas)  # concatenates dataframes
-
-        # self.frames is a list in which all data_strucs are contained
-        # this makes sure that this list empties
-        # need to use while to make sure that len of self.frames is 0
-        while len(self.frames) > 0:  # this definitely makes sure that data is removed
-            self.remove_data(self.frames[0])
-
-        self.file_row = 1  # sets file row to 1
-        # THIS IS HOW MERGED_DATA IS STORED
-        self.merged_data = MDSS(self, names, merged_data)
-        # this creates a new button that is placed in the frame of a given dataset
-        # with enough leeway for new buttons
-        # the button destroys the dataset completely
-        delete_object = tk.Button(master=self.merged_data.frame, text="Remove data",
-                                  command=lambda: self.remove_data(self.merged_data))
-        delete_object.grid(row=0, column=4)
-
-
-# MERGING DATA BLOCK : END
-# ADD & REMOVE DATA BLOCK : BEGINNING
-
-
-    def remove_data(self, frame):
-        """
-        Removes data_set_structure
-
-        Parameters
-        ----------
-        frame : data_set_structure that is to be removed
-
-        Returns
-        -------
-        None.
-
-        """
-        #print("all loaded: ", self.paths)
-        self.frames.remove(frame)
-        # data_set_str has additional path which is stored in mainapp (self)
-        if isinstance(frame, DSS):
-            self.paths.remove(frame.path)  # removes from list of paths
-        frame.frame.destroy()  # destroys tkinter object
-
-    def add_data(self):
-        """
-        Adds data. Data is added in the form of data_set_structure which is a class
-        initialized with variables main (tkinter tk.Tk()) and path (where .FCS file is)
-
-        Data_set_structure is stored in self.frames and self.loaded_data attributes
-
-        Returns
-        -------
-
-        """
-
-        main = self.main  # self is the entire main_app class, self.main is the tkinter root
-        path = select_file()  # function for opening path
-        if path in self.paths:
-            return()  # checking for duplicates, if found, stops the function
-        self.paths.append(path)
-        data_set = DSS(main, path)  # creates new data_set
-        # selects where to place it
-        data_set.place(self.file_row)
-        self.file_row = self.file_row+1  # shifting the entire row 1 bottom
-
-        self.frames.append(data_set)
-        # storing the entire frame object
-
-        # this creates a new button that is placed in the frame of a given dataset
-        # with enough leeway for new buttons
-        # the button destroys the dataset completely
-        delete_object = tk.Button(
-            master=data_set.frame, text="Remove data", command=lambda: self.remove_data(data_set))
-        delete_object.grid(row=0, column=6)
-
-
-    def start(self):
-        """Starts the GUI"""
-        self.main.mainloop()
-
+def start_interface():
+    app=ParserInterface()
+    app.master.mainloop()
+    
+class ParserInterface():
     def __init__(self):
-        """
-        This creates the main_app structure.
-        Attributes are:
-
-        self.main (tk.Tk() element of tkinter, or "root")
-
-
-        self.paths which is a list of all paths to .FCS files
-
-        self.frames which is a list that contains data_set_structures defined in the above class
-
-        self.file_row which modifies where a new data structure will be placed
-
-        Returns
-        -------
-        None.
-
-        """
-
-        main = tk.Tk()
-        main.title("GuavaMuse Parser")
-        self.main = main
-        self.file_row = 1
+        self.master = tk.Tk()
         self.paths = []
-        self.frames = []  # list of frames, frames being frame.class not tkinter Frame
-        self.merged_data = None
-        button_dictionary = {}  # in this dictionary, buttons will be stored
+        self.datastructs = []
+        self.command_frame = tk.Frame(master=self.master)
+        self.data_frame = tk.Frame(master=self.master)
 
         def quit_me():
-            main.quit()
-            main.destroy()
-        main.protocol("WM_DELETE_WINDOW", quit_me)
+            """quick ironing out of tkinter imperfection"""
+            self.master.quit()
+            self.master.destroy()
+        self.master.protocol("WM_DELETE_WINDOW", quit_me)
 
-        # this frame stores all the buttons
-        button_frame = tk.Frame(master=main)
-        # this button prompts addition of a new .FCS file
-        open_file = tk.Button(master=button_frame, text="Add File",
-                              bg="gainsboro", command=self.add_data)
-        open_file.grid(row=0, column=0)
-        # this button prompts all files to be merged in one superfile
-        merge_files = tk.Button(master=button_frame, text="Merge Files",
-                                bg="gainsboro", command=self.merge_data)
-        merge_files.grid(row=0, column=1)
+        self.command_frame.pack()
+        self.data_frame.pack()
 
-        button_dictionary["ADD"] = open_file
-        button_dictionary["MERGE"] = merge_files
+        tk.Button(master=self.command_frame, command=self.add_path, text="Add .FCS file",
+                  ).pack(side="left", anchor="nw")
+        tk.Button(master=self.command_frame, command=self.merge, text="Merge Selected",
+                  ).pack(side="left", anchor="nw")
 
-        self.button_dictionary = button_dictionary
+    def add_path(self):
+        """Add one FCS"""
+        path = select_file()
+        if path != "" and path not in self.paths:
+            self.paths.append(path)
+            self.datastructs.append(DataStructure(self, path))
 
-        button_frame.grid(row=0, column=0)
-        tk.Button(master=button_frame, text="Draw Menu", bg="gainsboro",
-                  command=lambda: DrawTopLevel(self.main,
-                                               self.merged_data.data)).grid(row=0, column=3)
+    def merge(self):
+        """Merge Datasets"""
+        selected = [item for item in self.datastructs if item.selectedVar.get()]
+        if len(selected) > 1:
+            paths = [item.path for item in selected]
+            data = [item.data for item in selected]
+            data = pd.concat(data, axis=0, ignore_index=True)
+            self.datastructs.append(ModifiedDataStructure(
+                self, path=paths, data=data, what="merge"))
 
 
-class DSS():
-    """
-    This is one data set structure. It consists of a tkinter Frame structure
-    (attribute self.frame), of museobject structure (attribute self.object),
-    and the name of the file (attribute self.name).
-    """
+class DataStructure():
+    pathCounter = 0  # used to differentiate paths excised from this DataStructure
 
-    def place(self, n):
-        """
-        Places the structure on tkinter frame. N is the number of currently loaded
-        data_set structures and it suitably places new structure  in Nth row.
+    def __init__(self, ParserInterfaceInst, path, **kwargs):
+        # frame within a frame
+        self.master = tk.Frame(master=ParserInterfaceInst.data_frame)
+        self.path = path
+        self.data = None
+        self.parserinterfaceinst = ParserInterfaceInst
+        # what object is in session, here to hold Gate and Debris
+        self.object_in_session = None
+        self.label = tk.Label(master=self.master, text="", bg="gainsboro")
+        self.selectedVar = tk.BooleanVar()  # used for selecting
+        self.type = "loaded"
 
-        Parameters
-        ----------
-        n : Number of currently loaded data_set structures
+        if "data" not in kwargs:
+            self.data = parse(path)
+        else:
+            self.data = kwargs["data"]
 
-        Returns
-        -------
-        None.
+        self.master.pack()
+        if isinstance(path, str):
+            self.label["text"] = path.split("/")[-1]
+        self.label.pack(side="left")
 
-        """
-        self.frame.grid(row=n, column=0)
+        tk.Checkbutton(master=self.master, variable=self.selectedVar, command=lambda: self.selectedVar.set(
+            not self.selectedVar.get())).pack(side="left")
+        tk.Button(master=self.master, text="Info",
+                  command=self.info).pack(side="left")
+        tk.Button(master=self.master, text="Delete",
+                  command=self.delete_data).pack(side="left")
+        tk.Button(master=self.master, text="Export",
+                  command=self.export_data).pack(side="left")
+        tk.Button(master=self.master, text="Auto",
+                  command=self.automatic_leg).pack(side="left")
+        tk.Button(master=self.master, text="Manual",
+                  command=self.manual_leg).pack(side="left")
+        tk.Button(master=self.master, text="Draw",
+                  command=self.draw).pack(side="left")
+        tk.Button(master=self.master, text="Gate",
+                  command=self.gate).pack(side="left")
+        tk.Button(master=self.master, text="Enrich",
+                  command=self.enrich).pack(side="left")
+        tk.Button(master=self.master, text="Debris",
+                  command=self.debris).pack(side="left")
+
+    def info(self):
+        """Info prompt, to be discussed"""
+        print("To be Added")
+        pass
+
+    def delete_data(self):
+        """Delete data"""
+        self.parserinterfaceinst.paths.remove(self.path)
+        self.parserinterfaceinst.datastructs.remove(self)
+        self.master.destroy()
 
     def export_data(self):
-        """
-        Exports the dataframe to a given directory
-
-        Two formats are available : .XLSX and .CSV
-
-        Returns
-        -------
-        None.
-
-        """
-
-        data = self.data
+        """Export the data where, in what format"""
         directory = filedialog.asksaveasfilename(title="Save all data from dataset", filetypes=[(
             "Excel files", "*.xlsx"), ("Comma Separated Values", "*.csv")], defaultextension=".csv")
-        ext = directory[-4:]
-        if ext == "xlsx":
-            data.to_excel(directory)
-        if ext == ".csv":
-            data.to_csv(directory)
+        if directory[-4:] == "xlsx":
+            self.data.to_excel(directory)
+        if directory[-4:] == ".csv":
+            self.data.to_csv(directory)
 
-    def automatic_legendry(self):
-        """
-        See "text_explanation"
-        """
-        data = text_explanation(self.path)
-        self.data = data
+    def automatic_leg(self):
+        """Automatic legendization acc. to .TXT file"""
+        self.data = text_explanation(self.path)
 
-    def __init__(self, main, path):
-        """
-        This is one data set structure. It consists of a tkinter Frame structure
-        (attribute self.frame), of museobject structure (attribute self.object),
-        and the name of the file (attribute self.name).
+    def manual_leg(self):
+        """Manual legendization"""
+        ManualEntry(self.data)
 
-        Parameters
-        ----------
-        main : tkinter root frame (tk.Tk())
-        path : .FCS file
+    def draw(self):
+        """General Drawer"""
+        DrawTopLevel("Not None", self.data)
 
-        Returns
-        -------
-        Creates the above structure. It does not place it on the tkinter main.
+    def enrich(self):
+        """Enrichment"""
+        XYSelectorTopLevel(self.data)
 
-        """
+    def gate(self):
+        """Start gating procedure"""
+        self.object_in_session = GatingDataManager(self.data)
+        self.object_in_session.master.protocol(
+            "WM_DELETE_WINDOW", self.gate_end)
 
-        frame = tk.Frame(master=main)  # initializes frame
-        self.frame = frame
-        self.path = path
-
-        museobject = parse(path, "obj")  # creates muse object
-        self.data = museobject.data
-
-        # makes tkinter label to show name of loaded object
-        self.name = path.split("/")[-1]
-        label = tk.Label(master=frame, text=self.name)
-        self.label = label
-        label.grid(row=0, column=0)
-
-        # creates a button that prompts automatic legendization
-        auto_legendry = tk.Button(
-            master=frame, text="Automatic Legend", command=self.automatic_legendry)
-        auto_legendry.grid(row=0, column=1)
-
-        # creates a button that prompts manual legendization through creation of manual_entry object
-        manual_legendry = tk.Button(
-            master=frame, text="Manual Legend", command=lambda: ManualEntry(museobject))
-        manual_legendry.grid(row=0, column=2)
-
-        # creates a button that promts exportation of data
-        export_but = tk.Button(master=frame, text="Export",
-                               command=self.export_data)
-        export_but.grid(row=0, column=3)
-
-
-class MDSS():
-    """
-    Creates a merged_data_set structure that consists of all data frame loaded
-    Dataframes must either all be legendized, or no dataframe must be legendized
-    It inherits from data_set_structure, and makes use of export_data function
-    """
-
-    def info_prompt(self):
-        """
-        Makes info prompt box where all data that were loaded and merged show
-
-        Returns
-        -------
-
-        """
-
-        prompt = tk.Toplevel()
-        n = 1
-        tk.Label(master=prompt, text="LOADED DATA").grid(row=0, column=0)
-        for item in self.info:
-            tk.Label(master=prompt, text=item).grid(row=n, column=0)
-            n = n+1
-
-    def __init__(self, mainclass, names, merged_data):
-        """
-        Creates a merged_data_set structure that consists of all data frame loaded
-        Dataframes must either all be legendized, or no dataframe must be legendized
-        It inherits from data_set_structure, and makes use of export_data function
-
-
-        Parameters
-        ----------
-        main : main_app class of which tkinter root (tk.Tk()) is the .main attribute
-
-        names : list of names of all datasets.
-
-        merged_data : pandas dataframe with all the loaded data.
-
-        Returns
-        -------
-        None.
-
-        """
-
-        master = mainclass.main  # master is tk.Tk root
-        frame = tk.Frame(master=master)  # initializes frame
-        self.main=mainclass
-        self.frame = frame
-        self.info = names
-        self.data = merged_data
-        self.debrisfree_data = None
-        self.debris_top = None
-        self.info_but = None
-        
-        # creates a button that promts exportation of data
-        export_but = tk.Button(master=frame, text="Export",
-                               command=self.export_data)
-        export_but.grid(row=0, column=2,sticky="nsew")
-
-        info_butt = tk.Button(master=frame, text="MERGED DATA",
-                              command=self.info_prompt)
-        self.info_but=info_butt
-        info_butt.grid(row=0, column=0,sticky="nsew")
-
-        gating_but = tk.Button(master=frame, text="GATING",
-                               command=self.gating)        
-
-        #gating_but = tk.Button(master=frame, text="GATING",
-        #                       command=lambda: guigo(self.data))
-        gating_but.grid(row=0, column=5,sticky="nsew")
-
-        #enrichment_but = tk.Button(
-         #   master=frame, text="ENRICHMENT", command=lambda: XYSelectorTopLevel(self.data))
-        enrichment_but = tk.Button(
-            master=frame, text="ENRICHMENT", command=self.enrichment)
-        enrichment_but.grid(row=0, column=6,sticky="nsew")
-
-        debrisexc_but = tk.Button(
-            master=frame, text="Remove Debris", command=self.debris_removal)
-        debrisexc_but.grid(row=0, column=7,sticky="nsew")
-        # stores this frame in mainclass.frames list for better removal
-        mainclass.frames.append(self)
-        
-        self.place() #<-places it on the grid
-    
-    def place(self):
-        self.frame.grid(row=1, column=0)
-        
-    def debris_removal(self):
-        """Starts debris removal procedure"""
-        self.debris_top = DebrisDataManager(self.data)
-        self.debris_top.master.protocol(
-            "WM_DELETE_WINDOW", self.debris_removal_end)
-
-    def debris_removal_end(self):
-        """Ends debris removal procedure"""
-        print("Debris removal ended")
-        selected_data=self.debris_top.selected_data
-        self.debris_top.master.destroy()
+    def gate_end(self):
+        """End gating procedure"""
+        selected_data = self.object_in_session.gated_data
+        self.object_in_session.master.destroy()
+        self.object_in_session = None
         if selected_data is None:
             return()
-        names=list(dict.fromkeys(selected_data.Name))
-        MDFSS = MDebrisFreeSS(self.main,names,merged_data=selected_data)
-        MDFSS.place()
+        gated_path = f"<ID={DataStructure.pathCounter}>"+self.path
+        DataStructure.pathCounter += 1
+        self.parserinterfaceinst.datastructs.append(ModifiedDataStructure(
+            self.parserinterfaceinst, path=gated_path, data=selected_data, what="gate"))
 
-    
-    def gating(self):
-        guigo(self.data)
-    
-    def enrichment(self):
-        XYSelectorTopLevel(self.data)
-        
+    def debris(self):
+        """Start debris removal procedure"""
+        self.object_in_session = DebrisDataManager(self.data)
+        self.object_in_session.master.protocol(
+            "WM_DELETE_WINDOW", self.debris_end)
 
-    def export_data(self):
+    def debris_end(self):
+        """End debris removal procedure"""
+        selected_data = self.object_in_session.selected_data
+        self.object_in_session.master.destroy()
+        self.object_in_session = None
+        if selected_data is None:
+            return()
+
+        debris_path = f"<ID={DataStructure.pathCounter}>"+self.path
+        DataStructure.pathCounter += 1
+        self.parserinterfaceinst.datastructs.append(ModifiedDataStructure(
+            self.parserinterfaceinst, path=debris_path, data=selected_data, what="debris"))
+
+
+class ModifiedDataStructure(DataStructure):
+    colordic = {"debris": "mint cream",
+                "gate": "alice blue", "merge": "gainsboro"}
+
+    def __init__(self, ParserInterfaceInst, path, **kwargs):
+        super().__init__(ParserInterfaceInst, path, **kwargs)
+        # _x=re.findall("<ID=[0-9]+>",self.path)[0]
+        # original_path=(self.path[len(_x):])
+        self.label["bg"] = ModifiedDataStructure.colordic[kwargs["what"]]
+        self.type = kwargs["what"]
+        if self.type != "merge":
+            self.data.Name = f"{self.type} from "+self.data.Name
+        else:
+            self.label["text"] = "Merged Data"
+
+class ManualEntry():
+    """A Tkinter wrapped window for manual legendization of samples"""
+
+    def __init__(self, data):
         """
-        Exports the dataframe to a given directory
+        This prompts the creation of a tkinter window in which user can input
+        Sample and Replicate entries (e.g. Sample_001 being "treated:1", Sample_002 being "treated:2", etc)
+        for a given dataset. Dataset that is given is contained in museobj parameter, which contains
+        attributes .data (the total dataset) and .samples which is a list of string naming every sample
+        in the given dataset
 
-        Two formats are available : .XLSX and .CSV
+        Main is just a tkinter.Root that manual minimizes (not implemented yet)
+
+        Parameters
+        ----------
+        main : tkinter.Root window.
+        museobj : pandas DataFrame that has "Sample" column.
+
+        Returns
+        -------
+        Modifies museobj parameter to include legendization ("Sample" and "Replicate" columns)
+
+        """
+
+        # initial conditions
+
+        self.master = tk.Toplevel()
+        self.data = data
+        self.legend_dictionary = None
+        self.label_entries = []
+        self.sample_entries = []
+        self.replicate_entries = []
+
+        self.master.title("Legendize manually")
+
+        try:
+            samples_to_replace = self.data.Replicate
+        except AttributeError:
+            samples_to_replace = self.data.Sample
+
+        samples_to_replace = sorted(list(set(samples_to_replace)))
+        n = len(samples_to_replace)
+
+        # setting up labels
+        tk.Label(text="Current name", master=self.master, relief="raised",
+                 bg="gainsboro").grid(row=0, column=0, sticky="nsew")
+        tk.Label(text="Enter sample", master=self.master, relief="raised",
+                 bg="gainsboro").grid(row=0, column=1, sticky="nsew")
+        tk.Label(text="Enter number", master=self.master, relief="raised",
+                 bg="gainsboro").grid(row=0, column=2, sticky="nsew")
+
+        # setting up the windows'0, 1 and 2 column
+        for i in range(n):
+            # labels
+            label = tk.Label(
+                master=self.master, text=samples_to_replace[i], relief="raised", bg="gainsboro", pady=5)
+            label.grid(row=i+1, column=0, sticky="nsew")
+            self.label_entries.append(label)
+
+            # samples
+            samp = tk.Entry(master=self.master)
+            samp.grid(column=1, row=i+1, sticky="nsw")
+            samp.bind("<Return>", self.enter_info)
+            self.sample_entries.append(samp)
+
+            # replicate numbers
+            repl = tk.Entry(master=self.master)
+            repl.grid(column=2, row=i+1, sticky="nsw")
+            repl.bind("<Return>", self.enter_info)
+            self.replicate_entries.append(repl)
+
+    def enter_info(self, event):
+        """
+        This is a function that is called when user presses "Enter" in any of
+        the given Entry fields
+
+        Two parameters are passed, which is a (class manual) or the self attribute
+        and b which is tkinter.Event class, b is not used.
+
+        Class manual contains self.labels, which is a collection of tkinter labels
+        whose displayed "text" is accessed by ["text"] suffix
+
+        Class manual contains self.samples and self.replicates which are a collection
+        of tkinter entries whose given value is accessed by .get() method
+
+        This function checks that user inputed something in every Entry field,
+        checks that Sample+Replicate are not duplicated (e.g, that Sample:01 is not written twice),
+        and then prompts legendization through manual.legendize() (a.legendize()) function
+
+        Parameters
+        ----------
+        self : Self, or manual class
+        event : Tkinter event class
 
         Returns
         -------
@@ -412,28 +295,89 @@ class MDSS():
 
         """
 
-        data = self.data
-        directory = filedialog.asksaveasfilename(title="Save all data from dataset", filetypes=[(
-            "Excel files", "*.xlsx"), ("Comma Separated Values", "*.csv")], defaultextension=".csv")
-        ext = directory[-4:]
-        if ext == "xlsx":
-            data.to_excel(directory)
-        if ext == ".csv":
-            data.to_csv(directory)
+        labels = self.label_entries
+        samples = self.sample_entries
+        replicates = self.replicate_entries
+        # the size of lists
+        n = len(labels)
+        # the original labels
+        original_text = [label["text"] for label in labels]
+        storage = []  # this list makes sure that there are no duplicates
+        for i in range(n):
+            sam = samples[i]
+            rep = replicates[i]
+            sam_val = sam.get()
+            rep_val = rep.get()
+            if len(sam_val) > 0 and len(rep_val) > 0:
+                text = sam_val+":"+rep_val
+                label = labels[i]
+                label["text"] = text
+                if text in storage:
+                    label["bg"] = "red"
+                    duplicate = True  # Boolean that prevents duplicate entry
+                else:
+                    label["bg"] = "white"
+                    storage.append(text)
+                    duplicate = False  # Boolean that prevents duplicate entry
 
-class MDebrisFreeSS(MDSS):
-    def place(self):
-        self.frame.grid(row=2,column=0)
+        # checking that everything is entered
+        check1 = [len(x.get()) for x in samples]
+        # checking that everything is entered
+        check2 = [len(x.get()) for x in samples]
 
-    def __init__(self, mainclass, names, merged_data):
-        super().__init__(mainclass, names, merged_data)
-        self.info.insert(0,"Removed debris from following files")
-        delete_object = tk.Button(master=self.frame, text="Remove data",
-                                  command=lambda: self.frame.destroy())
-        delete_object.grid(row=0, column=4,sticky="nsew")
-        self.info_but["text"]="Debris Free Data"
+        if 0 not in check1 and 0 not in check2 and duplicate is False:
+            new_labels = [label["text"] for label in labels]
+            dictionary = dict(zip(original_text, new_labels))
 
-def start_interface():
-    """Starts"""
-    app = Backbone()
-    app.start()
+            # IMPORTANT! DICTIONARY FROM WHICH LEGEND IS MADE
+            self.legend_dictionary = dictionary
+            self.legendize()  # legendization function
+
+    def legendize(self):
+        """
+        This function works on self.object parameter of class manual_entry
+
+        Manual entry class mainly consists of self.manual which is tkinter window
+        and self.object which is muse_creator_fcs object.
+
+        Self.object itself has attributes .data and .samples
+        This function modifies the muse object to include .data, .samples, and .replicate
+        attributes, as well as inserting new column titled "Replicate" into .data attribute
+
+        Parameters
+        ----------
+        a : muse_creator_fcs object. It has attributes .data which is a pandas DataFrame
+        structure that is modified
+
+        Returns
+        -------
+        Modifies pandas DataFrame (a.data) attribute to include Sample and Replicate
+
+        """
+
+        # dictionary of the type {"Sample_001":"user_input_1:user_input_2}
+        dictionary = self.legend_dictionary
+
+        keys = list(dictionary.values())  # these values will be new keys
+        values = [x[:x.find(":")] for x in keys]
+        # this is dictionary from replicate to sample
+        second_dictionary = dict(zip(keys, values))
+
+        # the following is necessary if one wants to update their legend
+        # if there is no "Replicate" column, "Samples" column is first mapped using
+        # legendized dictionary (of type {"Sample_001":"user_input_1:user_input_2})
+        # that column is switched to "Replicate" column
+        # "Sample" column is then changed to include everything before ":" delimited
+        # usually "user_input_1"
+
+        # if there is "Replicate" column, "Sample" column is changed to be equal to
+        # "Replicate" column mapped using dictionary (type:{"Sample_001":"user_input_1:user_input_2})
+
+        try:
+            self.data["Sample"] = self.data["Replicate"].map(dictionary)
+            self.data["Replicate"] = self.data["Sample"]
+            self.data["Sample"] = self.data["Sample"].map(second_dictionary)
+        except KeyError:
+            self.data["Sample"] = self.data["Sample"].map(dictionary)
+            self.data["Replicate"] = self.data["Sample"]
+            self.data["Sample"] = self.data["Sample"].map(second_dictionary)
