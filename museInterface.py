@@ -16,31 +16,36 @@ from .supplemental import select_file
 from .debris_exclusion import DebrisDataManager
 from .dfdrawer import DrawTopLevel
 
+
 def start_interface():
-    app=ParserInterface()
+    """Starts tkinter interface"""
+    app = ParserInterface()
     app.master.mainloop()
-    
+
+
 class ParserInterface():
+    """Wrap around tkinter Tk, holding datasets, etc"""
+
     def __init__(self):
         self.master = tk.Tk()
         self.paths = []
         self.datastructs = []
         self.command_frame = tk.Frame(master=self.master)
         self.data_frame = tk.Frame(master=self.master)
-
+        self.master.title("Guava Muse FCS parser and drawer")
         def quit_me():
             """quick ironing out of tkinter imperfection"""
             self.master.quit()
             self.master.destroy()
         self.master.protocol("WM_DELETE_WINDOW", quit_me)
 
-        self.command_frame.pack()
-        self.data_frame.pack()
+        self.command_frame.pack(fill="both",expand="True")
+        self.data_frame.pack(fill="both",expand="True",anchor="nw")
 
         tk.Button(master=self.command_frame, command=self.add_path, text="Add .FCS file",
-                  ).pack(side="left", anchor="nw")
+                  ).pack(side="left", anchor="nw",)
         tk.Button(master=self.command_frame, command=self.merge, text="Merge Selected",
-                  ).pack(side="left", anchor="nw")
+                  ).pack(side="left", anchor="nw",)
 
     def add_path(self):
         """Add one FCS"""
@@ -61,6 +66,7 @@ class ParserInterface():
 
 
 class DataStructure():
+    """Basic datastructure with commands"""
     pathCounter = 0  # used to differentiate paths excised from this DataStructure
 
     def __init__(self, ParserInterfaceInst, path, **kwargs):
@@ -71,7 +77,7 @@ class DataStructure():
         self.parserinterfaceinst = ParserInterfaceInst
         # what object is in session, here to hold Gate and Debris
         self.object_in_session = None
-        self.label = tk.Label(master=self.master, text="", bg="gainsboro")
+        self.label = tk.Label(master=self.master, text="", bg="gainsboro",width=30)
         self.selectedVar = tk.BooleanVar()  # used for selecting
         self.type = "loaded"
 
@@ -80,36 +86,31 @@ class DataStructure():
         else:
             self.data = kwargs["data"]
 
-        self.master.pack()
+        self.master.pack(fill="both",expand="True")
         if isinstance(path, str):
             self.label["text"] = path.split("/")[-1]
-        self.label.pack(side="left")
+        self.label.pack(side="left",fill="both",expand="True")
 
-        tk.Checkbutton(master=self.master, variable=self.selectedVar, command=lambda: self.selectedVar.set(
-            not self.selectedVar.get())).pack(side="left")
-        tk.Button(master=self.master, text="Info",
-                  command=self.info).pack(side="left")
+        tk.Checkbutton(master=self.master, variable=self.selectedVar,
+                       command=lambda: self.selectedVar.set(
+                           not self.selectedVar.get())).pack(side="left",fill="both",expand="True")
+
         tk.Button(master=self.master, text="Delete",
-                  command=self.delete_data).pack(side="left")
+                  command=self.delete_data).pack(side="left",fill="both",expand="True")
         tk.Button(master=self.master, text="Export",
-                  command=self.export_data).pack(side="left")
+                  command=self.export_data).pack(side="left",fill="both",expand="True")
         tk.Button(master=self.master, text="Auto",
-                  command=self.automatic_leg).pack(side="left")
+                  command=self.automatic_leg).pack(side="left",fill="both",expand="True")
         tk.Button(master=self.master, text="Manual",
-                  command=self.manual_leg).pack(side="left")
+                  command=self.manual_leg).pack(side="left",fill="both",expand="True")
         tk.Button(master=self.master, text="Draw",
-                  command=self.draw).pack(side="left")
+                  command=self.draw).pack(side="left",fill="both",expand="True")
         tk.Button(master=self.master, text="Gate",
-                  command=self.gate).pack(side="left")
+                  command=self.gate).pack(side="left",fill="both",expand="True")
         tk.Button(master=self.master, text="Enrich",
-                  command=self.enrich).pack(side="left")
+                  command=self.enrich).pack(side="left",fill="both",expand="True")
         tk.Button(master=self.master, text="Debris",
-                  command=self.debris).pack(side="left")
-
-    def info(self):
-        """Info prompt, to be discussed"""
-        print("To be Added")
-        pass
+                  command=self.debris).pack(side="left",fill="both",expand="True")
 
     def delete_data(self):
         """Delete data"""
@@ -181,6 +182,7 @@ class DataStructure():
 
 
 class ModifiedDataStructure(DataStructure):
+    """A bit advanced, not really necessary, just wanted to test inheritance"""
     colordic = {"debris": "mint cream",
                 "gate": "alice blue", "merge": "gainsboro"}
 
@@ -194,6 +196,7 @@ class ModifiedDataStructure(DataStructure):
             self.data.Name = f"{self.type} from "+self.data.Name
         else:
             self.label["text"] = "Merged Data"
+
 
 class ManualEntry():
     """A Tkinter wrapped window for manual legendization of samples"""
@@ -367,8 +370,8 @@ class ManualEntry():
         # if there is no "Replicate" column, "Samples" column is first mapped using
         # legendized dictionary (of type {"Sample_001":"user_input_1:user_input_2})
         # that column is switched to "Replicate" column
-        # "Sample" column is then changed to include everything before ":" delimited
-        # usually "user_input_1"
+        # "Sample" column is then changed to include everything
+        # before ":" delimited usually "user_input_1"
 
         # if there is "Replicate" column, "Sample" column is changed to be equal to
         # "Replicate" column mapped using dictionary (type:{"Sample_001":"user_input_1:user_input_2})
