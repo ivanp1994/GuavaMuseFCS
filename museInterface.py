@@ -11,9 +11,7 @@ import pandas as pd
 
 from .musefcsparser import parse, text_explanation
 from .gating import GatingDataManager
-from .gui_enrichment import XYSelectorTopLevel
-from .supplemental import select_file
-from .debris_exclusion import DebrisDataManager
+from .supplemental import select_file, ModifiedOptionMenu
 from .dfdrawer import DrawTopLevel
 
 
@@ -25,6 +23,7 @@ def start_interface():
 
 class ParserInterface():
     """Wrap around tkinter Tk, holding datasets, etc"""
+    grid_row = 0
 
     def __init__(self):
         self.master = tk.Tk()
@@ -33,14 +32,15 @@ class ParserInterface():
         self.command_frame = tk.Frame(master=self.master)
         self.data_frame = tk.Frame(master=self.master)
         self.master.title("Guava Muse FCS parser and drawer")
+
         def quit_me():
             """quick ironing out of tkinter imperfection"""
             self.master.quit()
             self.master.destroy()
         self.master.protocol("WM_DELETE_WINDOW", quit_me)
 
-        self.command_frame.pack(fill="both",expand="True")
-        self.data_frame.pack(fill="both",expand="True",anchor="nw")
+        self.command_frame.grid(row=0, column=0)
+        self.data_frame.grid(row=1, column=0)
 
         tk.Button(master=self.command_frame, command=self.add_path, text="Add .FCS file",
                   ).pack(side="left", anchor="nw",)
@@ -49,6 +49,7 @@ class ParserInterface():
 
     def add_path(self):
         """Add one FCS"""
+
         path = select_file()
         if path != "" and path not in self.paths:
             self.paths.append(path)
@@ -71,13 +72,16 @@ class DataStructure():
 
     def __init__(self, ParserInterfaceInst, path, **kwargs):
         # frame within a frame
-        self.master = tk.Frame(master=ParserInterfaceInst.data_frame)
+        self.master = ParserInterfaceInst.data_frame
         self.path = path
         self.data = None
         self.parserinterfaceinst = ParserInterfaceInst
+        self.legendization_option = None
+        self.operation_option = None
         # what object is in session, here to hold Gate and Debris
         self.object_in_session = None
-        self.label = tk.Label(master=self.master, text="", bg="gainsboro",width=30)
+        self.label = tk.Label(master=self.master, text="",
+                              bg="gainsboro", width=30)
         self.selectedVar = tk.BooleanVar()  # used for selecting
         self.type = "loaded"
 
@@ -86,31 +90,60 @@ class DataStructure():
         else:
             self.data = kwargs["data"]
 
-        self.master.pack(fill="both",expand="True")
         if isinstance(path, str):
             self.label["text"] = path.split("/")[-1]
-        self.label.pack(side="left",fill="both",expand="True")
+
+        # grid handling
+        row = ParserInterfaceInst.grid_row
+        ParserInterfaceInst.grid_row = row + 1
+
+        self.label.grid(row=row, column=0)
 
         tk.Checkbutton(master=self.master, variable=self.selectedVar,
                        command=lambda: self.selectedVar.set(
-                           not self.selectedVar.get())).pack(side="left",fill="both",expand="True")
+                           not self.selectedVar.get())).grid(row=row, column=1)
 
         tk.Button(master=self.master, text="Delete",
-                  command=self.delete_data).pack(side="left",fill="both",expand="True")
-        tk.Button(master=self.master, text="Export",
-                  command=self.export_data).pack(side="left",fill="both",expand="True")
-        tk.Button(master=self.master, text="Auto",
-                  command=self.automatic_leg).pack(side="left",fill="both",expand="True")
-        tk.Button(master=self.master, text="Manual",
-                  command=self.manual_leg).pack(side="left",fill="both",expand="True")
-        tk.Button(master=self.master, text="Draw",
-                  command=self.draw).pack(side="left",fill="both",expand="True")
-        tk.Button(master=self.master, text="Gate",
-                  command=self.gate).pack(side="left",fill="both",expand="True")
-        tk.Button(master=self.master, text="Enrich",
-                  command=self.enrich).pack(side="left",fill="both",expand="True")
-        tk.Button(master=self.master, text="Debris",
-                  command=self.debris).pack(side="left",fill="both",expand="True")
+                  command=self.delete_data).grid(row=row, column=2)
+
+        legendry_menu = ModifiedOptionMenu(master=self.master, label="Legendization",
+                                           options=["---", "auto", "manual"],
+                                           typevar=None)
+        legendry_menu.variable.trace("w", self.handle_legendization)
+        self.legendization_option = legendry_menu.variable
+
+        command_menu = ModifiedOptionMenu(master=self.master, label="Command",
+                                          options=["---", "Export",
+                                                   "Gate", "Draw"],
+                                          typevar=None)
+        command_menu.variable.trace("w", self.handle_commands)
+        self.command_option = command_menu.variable
+
+        legendry_menu.place(r=row, c=3)  # next is 5
+        command_menu.place(r=row, c=5)
+
+    def handle_legendization(self, *args):
+        """Handles legendization"""
+        legendization_dictionary = {
+            "auto": self.automatic_leg,
+            "manual": self.manual_leg
+        }
+        value = self.legendization_option.get()
+        if value != "---":
+            command = legendization_dictionary[value]
+            command()
+
+    def handle_commands(self, *args):
+        """Handles commands"""
+        command_dictionary = {"Export": self.export_data,
+                              "Draw": self.draw,
+                              "Gate": self.gate
+                              }
+        value = self.command_option.get()
+        if value != "---":
+            print(value)
+            command = command_dictionary[value]
+            command()
 
     def delete_data(self):
         """Delete data"""
@@ -139,10 +172,6 @@ class DataStructure():
         """General Drawer"""
         DrawTopLevel("Not None", self.data)
 
-    def enrich(self):
-        """Enrichment"""
-        XYSelectorTopLevel(self.data)
-
     def gate(self):
         """Start gating procedure"""
         self.object_in_session = GatingDataManager(self.data)
@@ -157,28 +186,10 @@ class DataStructure():
         if selected_data is None:
             return()
         gated_path = f"<ID={DataStructure.pathCounter}>"+self.path
+        print("Ended Gate")
         DataStructure.pathCounter += 1
         self.parserinterfaceinst.datastructs.append(ModifiedDataStructure(
             self.parserinterfaceinst, path=gated_path, data=selected_data, what="gate"))
-
-    def debris(self):
-        """Start debris removal procedure"""
-        self.object_in_session = DebrisDataManager(self.data)
-        self.object_in_session.master.protocol(
-            "WM_DELETE_WINDOW", self.debris_end)
-
-    def debris_end(self):
-        """End debris removal procedure"""
-        selected_data = self.object_in_session.selected_data
-        self.object_in_session.master.destroy()
-        self.object_in_session = None
-        if selected_data is None:
-            return()
-
-        debris_path = f"<ID={DataStructure.pathCounter}>"+self.path
-        DataStructure.pathCounter += 1
-        self.parserinterfaceinst.datastructs.append(ModifiedDataStructure(
-            self.parserinterfaceinst, path=debris_path, data=selected_data, what="debris"))
 
 
 class ModifiedDataStructure(DataStructure):
@@ -197,6 +208,9 @@ class ModifiedDataStructure(DataStructure):
         else:
             self.label["text"] = "Merged Data"
 
+    def automatic_leg(self):
+        print("Pointless for this dataset")
+
 
 class ManualEntry():
     """A Tkinter wrapped window for manual legendization of samples"""
@@ -204,9 +218,12 @@ class ManualEntry():
     def __init__(self, data):
         """
         This prompts the creation of a tkinter window in which user can input
-        Sample and Replicate entries (e.g. Sample_001 being "treated:1", Sample_002 being "treated:2", etc)
-        for a given dataset. Dataset that is given is contained in museobj parameter, which contains
-        attributes .data (the total dataset) and .samples which is a list of string naming every sample
+        Sample and Replicate entries
+        (e.g. Sample_001 being "treated:1", Sample_002 being "treated:2", etc)
+        for a given dataset. Dataset that is given is contained in museobj parameter,
+        which contains
+        attributes .data (the total dataset) and .samples
+        which is a list of string naming every sample
         in the given dataset
 
         Main is just a tkinter.Root that manual minimizes (not implemented yet)
@@ -253,7 +270,9 @@ class ManualEntry():
         for i in range(n):
             # labels
             label = tk.Label(
-                master=self.master, text=samples_to_replace[i], relief="raised", bg="gainsboro", pady=5)
+                master=self.master, text=samples_to_replace[i], relief="raised",
+                bg="gainsboro", pady=5)
+
             label.grid(row=i+1, column=0, sticky="nsew")
             self.label_entries.append(label)
 
@@ -374,7 +393,7 @@ class ManualEntry():
         # before ":" delimited usually "user_input_1"
 
         # if there is "Replicate" column, "Sample" column is changed to be equal to
-        # "Replicate" column mapped using dictionary (type:{"Sample_001":"user_input_1:user_input_2})
+        #"Replicate" column mapped using dictionary (type:{"Sample_001":"user_input_1:user_input_2})
 
         try:
             self.data["Sample"] = self.data["Replicate"].map(dictionary)

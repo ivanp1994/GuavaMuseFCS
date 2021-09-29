@@ -43,6 +43,7 @@ def data_figure(data, x="YEL-HLog", y="FSC-HLog"):
     Figure
 
     """
+    print(type(data),data.columns)
     fig = Figure(figsize=(10, 10))
     ax = fig.add_subplot(111)
     sns.scatterplot(data=data, x=x, y=y, ax=ax, s=1)
@@ -450,7 +451,7 @@ class GatingDataManager():
         selected_column = minimal
         selected_rows = selected_c[minimal]
         selected_df = df.loc[df[selected_column].isin(selected_rows)]
-        self.selected_data = selected_df
+        self.selected_categorical = selected_df
 
     def enter_gating(self):
         if self.selected_categorical is None:
