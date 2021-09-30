@@ -192,10 +192,6 @@ class DataStructure():
         self.parserinterfaceinst.datastructs.append(ModifiedDataStructure(
             self.parserinterfaceinst, path=gated_path, data=selected_data, what="gate"))
 
-        debris_path = f"Debris removed with ID={DataStructure.pathCounter}"
-        DataStructure.pathCounter += 1
-        self.parserinterfaceinst.datastructs.append(ModifiedDataStructure(
-            self.parserinterfaceinst, path=debris_path, data=selected_data, what="debris"))
 
 
 class ModifiedDataStructure(DataStructure):
