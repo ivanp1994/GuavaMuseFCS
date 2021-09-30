@@ -130,17 +130,17 @@ You can use TAB to move sideways, and use ENTER to input information and change 
 
 ### Gating Menu
 
-First, "Select the Data for Gating" prompt is opened. 
+When option Gate is selected, a new window (Gate Manager) pops up:
+
+![gate manager](https://user-images.githubusercontent.com/84333373/135474892-a36dac20-bb24-4ccd-b281-b120b54f0b84.PNG)
+
+Clicking on **Select Data** opens a new window. In this window user can choose which parts of their dataset they will "gate".
 
 ![gating_adding](https://user-images.githubusercontent.com/84333373/123617699-cf58b500-d807-11eb-8bf9-5d6e4ab88f4e.PNG)
 
 Select what data you want to add, and then click **Add to selected**. Click **Switch View** to inspect selected data. Select the data you don't want to gate, then click **Remove from Selected**. Finally, once you're sure with your choice, click **Finalize**. 
 
-A prompt to select X and Y values for resulting scatter plot will open.
-
-![xyselector](https://user-images.githubusercontent.com/84333373/121691343-3156b200-cac7-11eb-9054-79d99cec177a.PNG)
-
-Select your X and Y values and then click **Load**. The XY prompt will close, but "Select the Data for Gating" will remain open. Finally, "Gating Menu" prompt will open.
+The two dropdown menus called X and Y control what will be plotted - gating works on a scatterplot of X vs Y columns. Finally, to enter the main Gating Menu simply click **Enter Dating** :
 
 ![gating_gate1](https://user-images.githubusercontent.com/84333373/123618673-b6043880-d808-11eb-9226-7aeac9627cea.PNG)
 
@@ -173,7 +173,7 @@ You can do whatever you can do with regular files - drawing, exporting, gating (
 
 ### Draw Menu
 
-If you clicked **Draw Menu**, following prompt appeared:
+If the user selects **Draw**, the following prompt will appear:
 
 ![drawframe](https://user-images.githubusercontent.com/84333373/119473955-f8d77a00-bd4b-11eb-97f5-569f6372026f.PNG)
 
