@@ -43,7 +43,6 @@ def data_figure(data, x="YEL-HLog", y="FSC-HLog"):
     Figure
 
     """
-    print(type(data),data.columns)
     fig = Figure(figsize=(10, 10))
     ax = fig.add_subplot(111)
     sns.scatterplot(data=data, x=x, y=y, ax=ax, s=1)
