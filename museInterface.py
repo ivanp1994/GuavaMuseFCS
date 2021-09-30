@@ -59,11 +59,13 @@ class ParserInterface():
         """Merge Datasets"""
         selected = [item for item in self.datastructs if item.selectedVar.get()]
         if len(selected) > 1:
-            paths = [item.path for item in selected]
+            paths = f"<merged with ID={DataStructure.pathCounter}>"
+            DataStructure.pathCounter += 1
             data = [item.data for item in selected]
             data = pd.concat(data, axis=0, ignore_index=True)
             self.datastructs.append(ModifiedDataStructure(
                 self, path=paths, data=data, what="merge"))
+            
 
 
 class DataStructure():
@@ -72,7 +74,7 @@ class DataStructure():
 
     def __init__(self, ParserInterfaceInst, path, **kwargs):
         # frame within a frame
-        self.master = ParserInterfaceInst.data_frame
+        self.master = tk.Frame(master=ParserInterfaceInst.data_frame)
         self.path = path
         self.data = None
         self.parserinterfaceinst = ParserInterfaceInst
@@ -84,7 +86,8 @@ class DataStructure():
                               bg="gainsboro", width=30)
         self.selectedVar = tk.BooleanVar()  # used for selecting
         self.type = "loaded"
-
+        
+        #handle exceptions
         if "data" not in kwargs:
             self.data = parse(path)
         else:
@@ -92,19 +95,15 @@ class DataStructure():
 
         if isinstance(path, str):
             self.label["text"] = path.split("/")[-1]
+        #handle master
+        self.master.pack()
+        
+        #place commands and labels
 
-        # grid handling
-        row = ParserInterfaceInst.grid_row
-        ParserInterfaceInst.grid_row = row + 1
-
-        self.label.grid(row=row, column=0)
-
-        tk.Checkbutton(master=self.master, variable=self.selectedVar,
-                       command=lambda: self.selectedVar.set(
-                           not self.selectedVar.get())).grid(row=row, column=1)
-
+        self.label.grid(row=0, column=0)
+        tk.Checkbutton(master=self.master,variable=self.selectedVar).grid(row=0,column=1)
         tk.Button(master=self.master, text="Delete",
-                  command=self.delete_data).grid(row=row, column=2)
+                  command=self.delete_data).grid(row=0, column=2)
 
         legendry_menu = ModifiedOptionMenu(master=self.master, label="Legendization",
                                            options=["---", "auto", "manual"],
@@ -114,13 +113,14 @@ class DataStructure():
 
         command_menu = ModifiedOptionMenu(master=self.master, label="Command",
                                           options=["---", "Export",
-                                                   "Gate", "Draw"],
+                                                   "Gate", "Draw",
+                                                   ],
                                           typevar=None)
         command_menu.variable.trace("w", self.handle_commands)
         self.command_option = command_menu.variable
 
-        legendry_menu.place(r=row, c=3)  # next is 5
-        command_menu.place(r=row, c=5)
+        legendry_menu.place(r=0, c=3)  # next is 5
+        command_menu.place(r=0, c=5)
 
     def handle_legendization(self, *args):
         """Handles legendization"""
@@ -133,21 +133,22 @@ class DataStructure():
             command = legendization_dictionary[value]
             command()
 
-    def handle_commands(self, *args):
-        """Handles commands"""
-        command_dictionary = {"Export": self.export_data,
-                              "Draw": self.draw,
-                              "Gate": self.gate
-                              }
+    def handle_commands(self,*args):
+        command_dictionary = {"Export":self.export_data,
+                              "Draw":self.draw,
+                              "Gate":self.gate
+                                }
         value = self.command_option.get()
         if value != "---":
-            print(value)
             command = command_dictionary[value]
             command()
 
     def delete_data(self):
         """Delete data"""
-        self.parserinterfaceinst.paths.remove(self.path)
+        try:
+            self.parserinterfaceinst.paths.remove(self.path)
+        except ValueError:
+            pass
         self.parserinterfaceinst.datastructs.remove(self)
         self.master.destroy()
 
@@ -185,11 +186,16 @@ class DataStructure():
         self.object_in_session = None
         if selected_data is None:
             return()
-        gated_path = f"<ID={DataStructure.pathCounter}>"+self.path
+        gated_path = f"Gated with ID={DataStructure.pathCounter}"
         print("Ended Gate")
         DataStructure.pathCounter += 1
         self.parserinterfaceinst.datastructs.append(ModifiedDataStructure(
             self.parserinterfaceinst, path=gated_path, data=selected_data, what="gate"))
+
+        debris_path = f"Debris removed with ID={DataStructure.pathCounter}"
+        DataStructure.pathCounter += 1
+        self.parserinterfaceinst.datastructs.append(ModifiedDataStructure(
+            self.parserinterfaceinst, path=debris_path, data=selected_data, what="debris"))
 
 
 class ModifiedDataStructure(DataStructure):
