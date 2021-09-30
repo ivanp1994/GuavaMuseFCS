@@ -92,25 +92,31 @@ Function start_interface, well, starts the interface
 from GuavaMuseFCS import start_interface
 start_interface()
 ```
-Interface is a tkinter object that houses three buttons:
+Interface starts with just two buttons - **Add .FCS file** and **Merge Selected**:
 
-1. Add File
-2. Merge Files
-3. Draw Menu
+![initial](https://user-images.githubusercontent.com/84333373/135472572-26107de6-1072-426f-a542-bd7ff028a061.PNG)
 
-### Adding Files
-**Add File** opens a prompt to add a file. This is how the interface looks when several files are added:
+Clicking on **Add .FCS file** opens a prompt in which user can navigate to their .FCS file. Every file added is a unique structure, so there is no overwriting of original .FCS file(s). Here is how the window looks when two files are added.
 
-![first one](https://user-images.githubusercontent.com/84333373/131835689-c57d13e1-7e5f-4056-a20a-e1ed540fa51e.PNG)
+![added](https://user-images.githubusercontent.com/84333373/135472567-eacfd456-db75-429e-a6b3-65c9fe5f3cd9.PNG)
 
-Additional buttons appear for each file. These buttons are:
+Every structure has several components to it. First one is the label, displaying the name of the file (or it's unique ID). Second one is a Checkbox that can be toggled on and off. Third one is the **Delete** button - clicking it deletes the data from the interface (it doesn't delete the .FCS file). Followed by the delete button are two drop-down menus.
 
-1. Automatic Legend
-2. Manual Legend
-3. Export 
-4. Remove data
+First one is called **Legendization** and it controls how user can rename their collected samples. Two options are available - **auto** (identically to text_explanation function above) and **manual** in which a new window prompt is created. For details, see section below.
 
-Clicking on **Remove data** removes the data. Clicking on **Export data** creates a prompt to export data in either .XLSX or .CSV format. Exporting as .XLSX might take some time. Clicking on **Automatic Legend** is functionally identical to `text_explanation` function as it renames from text file. Clicking on **Manual Legend** creates a prompt to manually input names for every sample.
+![legendization](https://user-images.githubusercontent.com/84333373/135472573-7fa8bd80-df25-48e2-892c-db7eee169acb.png)
+
+Second one is called **Command** and it lets user do stuff with data. In the main branch, available options are :
+- **Export** - which exports the data as .csv or .xlsx. table
+- **Draw** - prompts a creation of Draw Menu (for details see sections below)
+- **Gate** - prompts a creation of a new window in which user can place "gates" in parts of their data and process them
+
+Additional commands are found in gui_enrichment branch-
+![command](https://user-images.githubusercontent.com/84333373/135472569-48307560-2714-4be4-80bd-c19000a04df9.png)
+
+To process multiple datasets at the same time, user can click on **Merge Selected** which merges all files that are selected in a new structure. No original datasets are modified in this process.
+
+![merged](https://user-images.githubusercontent.com/84333373/135472576-28d4130f-b49e-4ed2-8cb8-9e50bf79ae8c.PNG)
 
 ### Manually inputing sample names
 
@@ -121,25 +127,6 @@ The following prompt is opened:
 Under "Sample" column input the name of your sample. Under "Replicate" column, input the number of the replicate. If you didn't take repeated measurements of the same sample (shame on you!), just input 1 for every sample. 
 
 You can use TAB to move sideways, and use ENTER to input information and change Sample name. If you input the same thing twice, the background will change to bright red. Inputting all samples and pressing ENTER, while there are no bright red labels, will finalize manual inputting.
-
-### Merging files
-
-Clicking on **Merge** files collates the files in one super data set. Merge can only be achieved when number of columns are equal (so you either need to legendize all the datasets, or none of the datasets).
-
-Merging files changes the interface like this:
-
-![gating](https://user-images.githubusercontent.com/84333373/123617428-84d73880-d807-11eb-9641-5bd8640efaf3.PNG)
-
-Additional buttons appear for the great merge. These buttons are:
-
-1. MERGED DATA
-2. Export
-3. Remove data
-4. GATING
-
-Clicking on **MERGED DATA** gives you a prompt of all data you merged in this file. Clicking on **Export** and **Remove data** is self explanatory, and clicking on **GATING** opens a *Gating Menu*.
-
-Finally, clicking on **Draw Menu** opens the drawing menu.
 
 ### Gating Menu
 
@@ -177,6 +164,12 @@ Gates finalized:
 
 You can rename the Gates if you want. 
 Finally, clicking on **Apply Gates to Data** lets you export the dataset with additional columns. These additional columns represent gates, and have either True or False, representing if an event is in the gate or not.
+
+Exiting the Gate Manager automatically adds a new structure to the main interface.
+
+![gated](https://user-images.githubusercontent.com/84333373/135472570-833218bd-0738-499e-a2b8-7e1febe11502.PNG)
+
+You can do whatever you can do with regular files - drawing, exporting, gating (again), etc.
 
 ### Draw Menu
 
