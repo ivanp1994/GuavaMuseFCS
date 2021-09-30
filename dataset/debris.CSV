@@ -1,0 +1,10 @@
+Date - 09-SEP-2021
+Instrument Serial Number - 7200151242
+Software Name - Ki67 Proliferation
+Version Number - 1.5
+
+,,,,,,,,,,,,,,Dotplot Cursor Position,,,,,,,,,,,,,,,,,,,,
+ Sample No, Sample ID, Events Acquired, % Total, Cells/µL, Total Cell Conc (Cells/mL), % Negative Cells (Ki67-),%  Proliferating Cells (Ki67+), Ki67 (-) Mean, Ki67 (+) Mean, Ki67 (-) Median, Ki67 (+) Median, Ki67 (-) %CV, Ki67 (+) %CV, X1, Y1,X2,Y2, (Ki67-) Marker Position X1, (Ki67-) Marker Position X2, (Ki67+) Marker Position X1, (Ki67+) Marker Position X2, Acquisition Time (s), Date of Acquisition, Time of Acquisition, Date of Analysis, Time of Analysis, (High) YEL Gain, (Not set) RED Gain, FSC Gain, FSC Threshold, Flow Rate(µL/s), User Login Name, User Full Name,
+ 1, Sample_001, 5332, 100.00, 3493.35, 3.49E+006, 98.48, 1.52, 2.12, 31.24, 2.18, 27.16, 41.38, 130.13, 1.00, 1.04, 10000.00, 10000.00, 1.00, 9.47, 9.47, 10000.00, 2.6, 09-SEP-2021, 12:37:46, 09-SEP-2021, 12:37:50, 1.0, 47.3, 5.0, 1, 0.59, LNR, LNR, 
+ 2, Sample_002, 5000, 100.00, 3805.38, 3.81E+006, 98.34, 1.66, 2.13, 39.41, 2.18, 29.06, 42.40, 143.70, 1.00, 1.04, 10000.00, 10000.00, 1.00, 9.47, 9.47, 10000.00, 2.2, 09-SEP-2021, 12:38:18, 09-SEP-2021, 12:38:18, 1.0, 47.3, 5.0, 1, 0.59, LNR, LNR, 
+ 3, Sample_003, 5000, 100.00, 3822.54, 3.82E+006, 98.18, 1.82, 2.10, 33.85, 2.15, 26.56, 41.89, 148.69, 1.00, 1.04, 10000.00, 10000.00, 1.00, 9.47, 9.47, 10000.00, 2.2, 09-SEP-2021, 12:38:49, 09-SEP-2021, 12:38:49, 1.0, 47.3, 5.0, 1, 0.59, LNR, LNR, 
